@@ -99,21 +99,15 @@ if run_btn:
     col_left, col_right = st.columns(2)
     with col_left:
         st.plotly_chart(
-            chart_wait_distribution(
-                [vars(p) for p in patients]
-                if patients else []),
+            chart_wait_distribution(patients),
             use_container_width=True)
     with col_right:
         st.plotly_chart(
-            chart_priority_breakdown(
-                [vars(p) for p in patients]
-                if patients else []),
+            chart_priority_breakdown(patients),
             use_container_width=True)
 
     st.plotly_chart(
-        chart_exit_breakdown(
-            [vars(p) for p in patients]
-            if patients else []),
+        chart_exit_breakdown(patients),
         use_container_width=True)
 
 st.divider()
