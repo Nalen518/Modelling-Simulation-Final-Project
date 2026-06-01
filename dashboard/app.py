@@ -40,17 +40,18 @@ st.caption(
 
 params = get_params()
 
-col_run, col_info = st.columns([1, 3])
+col_run, col_info = st.columns([1, 4])
 with col_run:
     run_btn = st.button(
         "▶️ Run Simulation", type="primary",
         use_container_width=True)
 with col_info:
     st.info(
-        f"λ={params['lambda']} pts/hr | "
-        f"Doctors={params['n_doctors']} | "
-        f"Nurses={params['n_nurses']} | "
-        f"Duration={params['duration']} min"
+        f"**λ={params['lambda']} pts/hr** | "
+        f"Doctors: {params['n_doctors']} | "
+        f"Nurses: {params['n_nurses']} | "
+        f"Duration: {params['duration']} min",
+        icon="ℹ️"
     )
 
 if run_btn:
@@ -131,9 +132,8 @@ tab_a, tab_b, tab_c = st.tabs([
 ])
 
 with tab_a:
-    st.write("Varying doctor count (c=2,3,4,5) "
-             "at fixed λ=20 patients/hr")
-    if st.button("Run Experiment A"):
+    st.info("Varying doctor count (c=2,3,4,5) at fixed λ=20 patients/hr", icon="👨‍⚕️")
+    if st.button("▶️ Run Experiment A", type="primary"):
         from simulation.analysis import run_experiment_a
         with st.spinner("Running 4 scenarios..."):
             res_a = run_experiment_a({
@@ -148,8 +148,8 @@ with tab_a:
         st.dataframe(format_results(res_a))
 
 with tab_b:
-    st.write("Varying arrival rate at fixed c=3 doctors")
-    if st.button("Run Experiment B"):
+    st.info("Varying arrival rate at fixed c=3 doctors", icon="📈")
+    if st.button("▶️ Run Experiment B", type="primary"):
         from simulation.analysis import run_experiment_b
         with st.spinner("Running 4 scenarios..."):
             res_b = run_experiment_b({
@@ -181,7 +181,7 @@ with tab_c:
     col_mc1, col_mc2 = st.columns(2)
 
     with col_mc1:
-        if st.button("Run MC — Vary Doctors"):
+        if st.button("🎲 Run MC — Vary Doctors", type="primary", use_container_width=True):
             from simulation.analysis import \
                 run_monte_carlo_c1
             with st.spinner(
@@ -203,7 +203,7 @@ with tab_c:
             st.dataframe(mc1)
 
     with col_mc2:
-        if st.button("Run MC — Vary Arrival Rate"):
+        if st.button("🎲 Run MC — Vary Arrival Rate", type="primary", use_container_width=True):
             from simulation.analysis import \
                 run_monte_carlo_c2
             with st.spinner(
