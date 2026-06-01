@@ -14,6 +14,17 @@ from dashboard.charts import (
     chart_confidence_interval
 )
 
+def format_results(results):
+    import pandas as pd
+    df = pd.DataFrame(results)
+    if "per_priority" in df.columns:
+        # Flatten the Red (priority 1) data into readable columns
+        df["Red Count"] = df["per_priority"].apply(lambda p: p.get(1, {}).get("count", 0))
+        df["Red Avg Wait (min)"] = df["per_priority"].apply(lambda p: round(p.get(1, {}).get("avg_wait", 0), 1))
+        df["Red Max Wait (min)"] = df["per_priority"].apply(lambda p: round(p.get(1, {}).get("max_wait", 0), 1))
+        df = df.drop(columns=["per_priority"])
+    return df
+
 st.set_page_config(
     page_title="IGD Queue Simulation",
     page_icon="🏥",
@@ -134,7 +145,7 @@ with tab_a:
                 res_a, "Doctors",
                 [2, 3, 4, 5]),
             use_container_width=True)
-        st.dataframe(res_a)
+        st.dataframe(format_results(res_a))
 
 with tab_b:
     st.write("Varying arrival rate at fixed c=3 doctors")
@@ -150,7 +161,7 @@ with tab_b:
                 res_b, "λ",
                 [10, 20, 30, 40]),
             use_container_width=True)
-        st.dataframe(res_b)
+        st.dataframe(format_results(res_b))
 
 with tab_c:
     st.markdown("""
