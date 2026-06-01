@@ -20,7 +20,7 @@ def chart_wait_distribution(patients: list) -> go.Figure:
         pts = [p["wait_time"] if isinstance(p, dict)
                else p.wait_time
                for p in patients
-               if (p["priority"] if isinstance(p, dict)
+               if int(p["priority"] if isinstance(p, dict)
                else p.priority) == pri]
         if pts:
             fig.add_trace(go.Histogram(
@@ -44,8 +44,7 @@ def chart_priority_breakdown(patients: list) -> go.Figure:
     """Donut chart of priority distribution."""
     counts = {k: 0 for k in PRIORITY_NAMES}
     for p in patients:
-        pri = p["priority"] if isinstance(p, dict) \
-              else p.priority
+        pri = int(p["priority"] if isinstance(p, dict) else p.priority)
         counts[pri] = counts.get(pri, 0) + 1
     fig = go.Figure(go.Pie(
         labels=[PRIORITY_NAMES[k] for k in counts],
@@ -64,10 +63,8 @@ def chart_exit_breakdown(patients: list) -> go.Figure:
     data = {pri: {"discharged": 0, "admitted": 0}
             for pri in [1, 2, 3, 4]}
     for p in patients:
-        pri = p["priority"] if isinstance(p, dict) \
-              else p.priority
-        ext = p["exit_type"] if isinstance(p, dict) \
-              else p.exit_type
+        pri = int(p["priority"] if isinstance(p, dict) else p.priority)
+        ext = str(p["exit_type"] if isinstance(p, dict) else p.exit_type)
         if pri in data and ext in data[pri]:
             data[pri][ext] += 1
     fig = go.Figure()
