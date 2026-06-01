@@ -13,15 +13,28 @@ PRIORITY_NAMES = {
     3: "Green", 4: "White", 5: "Black"
 }
 
+def _get_priority(p):
+    """Safely extract priority as plain int."""
+    raw = p["priority"] if isinstance(p, dict) else p.priority
+    return int(raw)
+
+def _get_exit(p):
+    """Safely extract exit_type as plain string."""
+    raw = p["exit_type"] if isinstance(p, dict) else p.exit_type
+    return str(raw)
+
+def _get_wait(p):
+    """Safely extract wait_time as float."""
+    if isinstance(p, dict):
+        return float(p.get("wait_time", 0))
+    return float(p.wait_time)
+
 def chart_wait_distribution(patients: list) -> go.Figure:
     """Histogram of wait times per priority."""
     fig = go.Figure()
     for pri in [1, 2, 3, 4]:
-        pts = [p["wait_time"] if isinstance(p, dict)
-               else p.wait_time
-               for p in patients
-               if int(p["priority"] if isinstance(p, dict)
-               else p.priority) == pri]
+        pts = [_get_wait(p) for p in patients
+               if _get_priority(p) == pri]
         if pts:
             fig.add_trace(go.Histogram(
                 x=pts,
@@ -42,10 +55,14 @@ def chart_wait_distribution(patients: list) -> go.Figure:
 
 def chart_priority_breakdown(patients: list) -> go.Figure:
     """Donut chart of priority distribution."""
-    counts = {k: 0 for k in PRIORITY_NAMES}
+    counts = {}
     for p in patients:
-        pri = int(p["priority"] if isinstance(p, dict) else p.priority)
-        counts[pri] = counts.get(pri, 0) + 1
+        pri = _get_priority(p)
+        if pri in PRIORITY_NAMES:
+            counts[pri] = counts.get(pri, 0) + 1
+    # Ensure at least one entry for empty data
+    if not counts:
+        counts = {1: 0}
     fig = go.Figure(go.Pie(
         labels=[PRIORITY_NAMES[k] for k in counts],
         values=list(counts.values()),
@@ -63,8 +80,8 @@ def chart_exit_breakdown(patients: list) -> go.Figure:
     data = {pri: {"discharged": 0, "admitted": 0}
             for pri in [1, 2, 3, 4]}
     for p in patients:
-        pri = int(p["priority"] if isinstance(p, dict) else p.priority)
-        ext = str(p["exit_type"] if isinstance(p, dict) else p.exit_type)
+        pri = _get_priority(p)
+        ext = _get_exit(p)
         if pri in data and ext in data[pri]:
             data[pri][ext] += 1
     fig = go.Figure()
