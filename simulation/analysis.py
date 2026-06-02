@@ -15,7 +15,8 @@ def compute_metrics(result: dict,
                     n_doctors: int = 3) -> dict:
     patients = result["patients"]
     treated  = [p for p in patients
-                if p.exit_type != "DOA"]
+                if p.exit_type != "DOA"
+                and p.exit_type != ""]
     doa      = [p for p in patients
                 if p.exit_type == "DOA"]
 
@@ -24,7 +25,7 @@ def compute_metrics(result: dict,
                   max(len(treated), 1))
     max_wait   = max(
         (p.wait_time for p in treated), default=0)
-    throughput = len(treated) / (result["time"] / 60)
+    throughput = len(treated) / max(result["time"] / 60, 1)
     total_treatment_time = sum(
         p.treatment_duration
         for p in treated)
@@ -32,20 +33,37 @@ def compute_metrics(result: dict,
                    max(result["time"] * n_doctors, 1)
                    ) * 100
 
+    # Completed = treatment_end > 0 (fully done)
+    completed = [p for p in treated
+                 if p.treatment_end > 0]
+
     # Per-priority metrics
     per_priority = {}
     for pri in [1, 2, 3, 4]:
-        pts = [p for p in treated
-               if p.priority == pri]
+        pts = [p for p in patients
+               if int(p.priority) == pri
+               and p.exit_type != "DOA"]
+        done = [p for p in pts if p.treatment_end > 0]
+        in_treat = [p for p in pts
+                    if p.treatment_start > 0
+                    and p.treatment_end == 0]
+        in_queue = [p for p in pts
+                    if p.triage_end > 0
+                    and p.treatment_start == 0]
+
         per_priority[pri] = {
-            "count":     len(pts),
-            "avg_wait":  (sum(p.wait_time for p in pts) /
-                          max(len(pts), 1)),
+            "count":        len(pts),
+            "completed":    len(done),
+            "in_progress":  len(in_treat),
+            "still_queuing":len(in_queue),
+            "avg_wait":  (sum(p.wait_time for p in done) /
+                          max(len(done), 1)),
             "max_wait":  max(
-                (p.wait_time for p in pts), default=0),
+                (p.wait_time for p in done), default=0),
             "avg_treat": (sum(
                 p.treatment_duration
-                for p in pts) / max(sum(1 for p in pts if p.treatment_end > 0), 1))
+                for p in done) /
+                max(len(done), 1)),
         }
 
     # Queue metrics from stage_counts log
@@ -54,6 +72,7 @@ def compute_metrics(result: dict,
     return {
         "total":        len(patients),
         "treated":      len(treated),
+        "completed":    len(completed),
         "doa":          len(doa),
         "avg_wait":     round(avg_wait, 2),
         "max_wait":     round(max_wait, 2),
@@ -76,7 +95,7 @@ def run_experiment_a(base_params: dict = None) -> list:
         m["scenario"] = f"c={c}"
         m["param_value"] = c
         results.append(m)
-        print(f"[A] c={c} → "
+        print(f"[A] c={c} -> "
               f"avg_wait={m['avg_wait']} min | "
               f"util={m['utilization']}% | "
               f"Red_wait="
@@ -96,22 +115,18 @@ def run_experiment_b(base_params: dict = None) -> list:
         m["scenario"] = f"λ={lam}"
         m["param_value"] = lam
         results.append(m)
-        print(f"[B] λ={lam} → "
+        print(f"[B] lambda={lam} -> "
               f"avg_wait={m['avg_wait']} min | "
               f"Red_wait="
               f"{m['per_priority'][1]['avg_wait']:.1f} | "
               f"max_queue={m['max_queue']}")
     return results
 
-# ─── EXPERIMENT C: MONTE CARLO ───────────────────────────
+# ─── SINGLE REPLICATION ──────────────────────────────────
 def run_single_replication(params: dict,
                            n_doctors: int,
                            seed: int = None) -> dict:
-    """
-    One Monte Carlo replication.
-    Sets random seed for reproducibility.
-    Returns flat metrics dict for aggregation.
-    """
+    """One Monte Carlo replication with risk flags."""
     if seed is not None:
         random.seed(seed)
     p = {**params, "n_doctors": n_doctors}
@@ -119,209 +134,307 @@ def run_single_replication(params: dict,
     raw = sim.run()
     m = compute_metrics(raw, n_doctors=n_doctors)
 
-    # Extract specific risk indicators
     patients = raw["patients"]
-    treated  = [p for p in patients
-                if p.exit_type != "DOA"]
+    treated  = [pt for pt in patients
+                if pt.exit_type != "DOA"
+                and pt.exit_type != ""]
 
-    red_patients = [p for p in treated
-                    if p.priority == 1]
-    green_patients = [p for p in treated
-                      if p.priority == 3]
+    red_patients   = [pt for pt in treated
+                      if int(pt.priority) == 1
+                      and pt.treatment_start > 0]
+    green_patients = [pt for pt in treated
+                      if int(pt.priority) == 3
+                      and pt.treatment_start > 0]
 
-    # Risk flags for this replication
-    red_breach   = any(p.wait_time > 5
-                       for p in red_patients)
-    green_breach = any(p.wait_time > 60
-                       for p in green_patients)
-    queue_breach = m["max_queue"] > 20
+    # Risk flags — Kemenkes 10-min threshold for Red
+    red_breach_10 = any(pt.wait_time > 10
+                        for pt in red_patients)
+    red_breach_5  = any(pt.wait_time > 5
+                        for pt in red_patients)
+    green_breach  = any(pt.wait_time > 60
+                        for pt in green_patients)
+    queue_breach  = m["max_queue"] > 20
+    util_breach   = m["utilization"] > 95
 
     return {
         **m,
-        "red_breach":   red_breach,    # bool
-        "green_breach": green_breach,  # bool
-        "queue_breach": queue_breach,  # bool
-        "red_avg_wait": m["per_priority"][1]["avg_wait"],
-        "green_avg_wait": m["per_priority"][3]["avg_wait"],
+        "red_breach":    red_breach_5,
+        "red_breach_10": red_breach_10,
+        "green_breach":  green_breach,
+        "queue_breach":  queue_breach,
+        "util_breach":   util_breach,
+        "red_avg_wait":  m["per_priority"][1]["avg_wait"],
+        "green_avg_wait":m["per_priority"][3]["avg_wait"],
     }
 
-def run_monte_carlo_c1(
-        n_replications: int = 100,
-        base_params: dict = None) -> list:
+# ─── MC: OPTIMAL DOCTOR SCAN (Q1) ───────────────────────
+def mc_optimal_doctors(
+        base_params: dict = None,
+        n_replications: int = 100) -> dict:
     """
-    C1: Vary doctor count c=2,3,4,5 at λ=20.
-    N=100 replications per scenario.
-    Returns list of scenario summary dicts.
+    Q1: Scan c=1..10 at λ=20. N=100 reps each.
+    Find minimum c where:
+      P(Red wait > 10 min) < 5%
+      P(Green wait > 60 min) < 10%
+      60% < Utilization < 90%
     """
     params = {**(base_params or BASE_PARAMS),
               "lambda": 20}
-    results = []
+    print("[MC-Q1] Scanning c=1..10...")
 
-    for c in [2, 3, 4, 5]:
-        print(f"[MC-C1] Running {n_replications} "
-              f"replications at c={c}...")
-        replications = []
+    scan_results = []
+    optimal = None
+
+    for c in range(1, 11):
+        reps = []
         for i in range(n_replications):
             rep = run_single_replication(
-                params, n_doctors=c, seed=i)
-            replications.append(rep)
+                params, n_doctors=c, seed=i*7)
+            reps.append(rep)
 
-        # Aggregate across replications
-        avg_waits    = [r["avg_wait"] for r in replications]
-        red_waits    = [r["red_avg_wait"]
-                        for r in replications]
-        utils        = [r["utilization"]
-                        for r in replications]
-        red_breaches = [r["red_breach"]
-                        for r in replications]
-        grn_breaches = [r["green_breach"]
-                        for r in replications]
+        p_red   = round(sum(r["red_breach_10"]
+                    for r in reps) /
+                    n_replications * 100, 1)
+        p_green = round(sum(r["green_breach"]
+                    for r in reps) /
+                    n_replications * 100, 1)
+        util_m  = round(np.mean([r["utilization"]
+                    for r in reps]), 1)
+        red_wait_m = round(np.mean([r["red_avg_wait"]
+                    for r in reps]), 2)
 
-        summary = {
-            "scenario":       f"c={c}",
-            "param_value":    c,
-            "n_replications": n_replications,
+        cond_red   = p_red < 5.0
+        cond_green = p_green < 10.0
+        cond_util  = 60.0 < util_m < 90.0
+        all_met    = cond_red and cond_green and cond_util
 
-            # Avg wait — mean + 95% CI
-            "avg_wait_mean":  round(np.mean(avg_waits), 2),
-            "avg_wait_ci_lo": round(
-                np.percentile(avg_waits, 2.5), 2),
-            "avg_wait_ci_hi": round(
-                np.percentile(avg_waits, 97.5), 2),
-
-            # Red patient wait — mean + 95% CI
-            "red_wait_mean":  round(np.mean(red_waits), 2),
-            "red_wait_ci_lo": round(
-                np.percentile(red_waits, 2.5), 2),
-            "red_wait_ci_hi": round(
-                np.percentile(red_waits, 97.5), 2),
-
-            # Utilization — mean
-            "utilization_mean": round(np.mean(utils), 1),
-
-            # Risk probabilities
-            "p_red_breach": round(
-                sum(red_breaches) /
-                n_replications * 100, 1),
-            "p_green_breach": round(
-                sum(grn_breaches) /
-                n_replications * 100, 1),
+        entry = {
+            "c":                  c,
+            "p_red_breach":       p_red,
+            "p_green_breach":     p_green,
+            "utilization_mean":   util_m,
+            "red_wait_mean":      red_wait_m,
+            "all_conditions_met": all_met,
         }
-        results.append(summary)
-        print(f"  → P(Red wait>5min)="
-              f"{summary['p_red_breach']}% | "
-              f"Red wait 95CI=["
-              f"{summary['red_wait_ci_lo']}, "
-              f"{summary['red_wait_ci_hi']}] min")
+        scan_results.append(entry)
+        print(f"  c={c}: P(Red>10m)={p_red}% | "
+              f"P(Grn>60m)={p_green}% | "
+              f"Util={util_m}% | "
+              f"{'[OK]' if all_met else '[FAIL]'}")
 
-    return results
+        if all_met and optimal is None:
+            optimal = entry
 
-def run_monte_carlo_c2(
-        n_replications: int = 100,
-        base_params: dict = None) -> list:
+    if optimal:
+        return {
+            "conditions_met":  True,
+            "optimal_doctors": optimal["c"],
+            "p_red_breach":    optimal["p_red_breach"],
+            "p_green_breach":  optimal["p_green_breach"],
+            "utilization_mean":optimal["utilization_mean"],
+            "scan_results":    scan_results,
+        }
+    return {
+        "conditions_met": False,
+        "optimal_doctors": None,
+        "scan_results":   scan_results,
+    }
+
+# ─── MC: OVERLOAD PROBABILITY (Q2) ──────────────────────
+def mc_overload_probability(
+        base_params: dict = None,
+        n_replications: int = 100) -> list:
     """
-    C2: Vary arrival rate λ=10,20,30,40 at c=3.
-    N=100 replications per scenario.
+    Q2: Vary λ=10,20,30,40 at c=3.
+    Overload = ANY of: queue>20, util>95%, Red>10min.
+    Returns per-scenario overload probabilities.
     """
     params = {**(base_params or BASE_PARAMS),
               "n_doctors": 3}
     results = []
 
     for lam in [10, 20, 30, 40]:
-        print(f"[MC-C2] Running {n_replications} "
-              f"replications at λ={lam}...")
+        print(f"[MC-Q2] lambda={lam}...")
         p = {**params, "lambda": lam}
-        replications = []
+        reps = []
         for i in range(n_replications):
             rep = run_single_replication(
-                p, n_doctors=3, seed=i*100)
-            replications.append(rep)
+                p, n_doctors=3, seed=i*13)
+            reps.append(rep)
 
-        red_waits     = [r["red_avg_wait"]
-                         for r in replications]
-        queue_breaches= [r["queue_breach"]
-                         for r in replications]
-        red_breaches  = [r["red_breach"]
-                         for r in replications]
+        p_queue = round(sum(r["queue_breach"]
+                    for r in reps) /
+                    n_replications * 100, 1)
+        p_util  = round(sum(r["util_breach"]
+                    for r in reps) /
+                    n_replications * 100, 1)
+        p_red   = round(sum(r["red_breach_10"]
+                    for r in reps) /
+                    n_replications * 100, 1)
+        p_any   = round(sum(
+                    1 for r in reps
+                    if r["queue_breach"]
+                    or r["util_breach"]
+                    or r["red_breach_10"]) /
+                    n_replications * 100, 1)
 
-        summary = {
+        # Identify main driver
+        drivers = {"Queue>20": p_queue,
+                   "Util>95%": p_util,
+                   "Red>10min": p_red}
+        main_driver = max(drivers,
+                          key=drivers.get)
+
+        results.append({
             "scenario":       f"λ={lam}",
-            "param_value":    lam,
-            "n_replications": n_replications,
+            "p_overload":     p_any,
+            "p_queue_breach": p_queue,
+            "p_util_breach":  p_util,
+            "p_red_breach":   p_red,
+            "overload_driver":main_driver,
+        })
+        print(f"  -> P(overload)={p_any}% | "
+              f"Driver: {main_driver}")
 
+    return results
+
+# ─── MC: CRITICAL PATIENT RISK (Q3) ─────────────────────
+def mc_critical_patient_risk(
+        base_params: dict = None,
+        n_replications: int = 100) -> dict:
+    """
+    Q3: Red patient breach analysis.
+    Q3a: Vary c=2,3,4,5 at λ=20 — P(Red>10min) + 95% CI.
+    Q3b: Vary λ=10,20,30,40 at c=3 — same metrics.
+    """
+    params_base = base_params or BASE_PARAMS
+
+    # Q3a: Vary doctors
+    print("[MC-Q3a] Varying doctors...")
+    q3a = []
+    for c in [2, 3, 4, 5]:
+        p = {**params_base, "lambda": 20, "n_doctors": c}
+        reps = []
+        for i in range(n_replications):
+            rep = run_single_replication(
+                p, n_doctors=c, seed=i*17)
+            reps.append(rep)
+
+        red_waits = [r["red_avg_wait"] for r in reps]
+        p_breach  = round(sum(r["red_breach_10"]
+                    for r in reps) /
+                    n_replications * 100, 1)
+
+        entry = {
+            "scenario":        f"c={c}",
+            "red_wait_mean":   round(np.mean(red_waits), 2),
+            "red_wait_ci_lo":  round(
+                np.percentile(red_waits, 2.5), 2),
+            "red_wait_ci_hi":  round(
+                np.percentile(red_waits, 97.5), 2),
+            "p_red_breach_10": p_breach,
+            "safe":            p_breach < 5.0,
+        }
+        q3a.append(entry)
+        print(f"  c={c}: P(Red>10m)={p_breach}% | "
+              f"Mean={entry['red_wait_mean']} min")
+
+    # Q3b: Vary arrival rate
+    print("[MC-Q3b] Varying lambda...")
+    q3b = []
+    for lam in [10, 20, 30, 40]:
+        p = {**params_base, "lambda": lam, "n_doctors": 3}
+        reps = []
+        for i in range(n_replications):
+            rep = run_single_replication(
+                p, n_doctors=3, seed=i*23)
+            reps.append(rep)
+
+        red_waits = [r["red_avg_wait"] for r in reps]
+        p_breach  = round(sum(r["red_breach_10"]
+                    for r in reps) /
+                    n_replications * 100, 1)
+
+        entry = {
+            "scenario":        f"λ={lam}",
+            "red_wait_mean":   round(np.mean(red_waits), 2),
+            "red_wait_ci_lo":  round(
+                np.percentile(red_waits, 2.5), 2),
+            "red_wait_ci_hi":  round(
+                np.percentile(red_waits, 97.5), 2),
+            "p_red_breach_10": p_breach,
+            "safe":            p_breach < 5.0,
+        }
+        q3b.append(entry)
+        print(f"  lambda={lam}: P(Red>10m)={p_breach}% | "
+              f"Mean={entry['red_wait_mean']} min")
+
+    return {
+        "q3a_by_doctors": q3a,
+        "q3b_by_lambda":  q3b,
+    }
+
+# ─── LEGACY FUNCTIONS (backward compat) ─────────────────
+def run_monte_carlo_c1(n_replications=100,
+                       base_params=None):
+    """Legacy wrapper for old app.py."""
+    params = {**(base_params or BASE_PARAMS),
+              "lambda": 20}
+    results = []
+    for c in [2, 3, 4, 5]:
+        reps = []
+        for i in range(n_replications):
+            rep = run_single_replication(
+                params, n_doctors=c, seed=i)
+            reps.append(rep)
+        red_waits = [r["red_avg_wait"] for r in reps]
+        results.append({
+            "scenario":       f"c={c}",
+            "p_red_breach":   round(sum(r["red_breach"]
+                              for r in reps) /
+                              n_replications * 100, 1),
+            "p_green_breach": round(sum(r["green_breach"]
+                              for r in reps) /
+                              n_replications * 100, 1),
             "red_wait_mean":  round(np.mean(red_waits), 2),
             "red_wait_ci_lo": round(
                 np.percentile(red_waits, 2.5), 2),
             "red_wait_ci_hi": round(
                 np.percentile(red_waits, 97.5), 2),
-
-            "p_red_breach":   round(
-                sum(red_breaches) /
-                n_replications * 100, 1),
-            "p_queue_breach": round(
-                sum(queue_breaches) /
-                n_replications * 100, 1),
-        }
-        results.append(summary)
-        print(f"  → P(Red>5min)="
-              f"{summary['p_red_breach']}% | "
-              f"P(Queue>20)="
-              f"{summary['p_queue_breach']}%")
-
+        })
     return results
 
-def find_optimal_staffing(
-        base_params: dict = None,
-        n_replications: int = 100) -> dict:
-    """
-    C3: Find minimum c where ALL conditions met:
-    - P(Red wait > 5 min) < 5%
-    - P(Green wait > 60 min) < 10%
-    - 60% < Utilization < 90%
-    """
+def run_monte_carlo_c2(n_replications=100,
+                       base_params=None):
+    """Legacy wrapper for old app.py."""
     params = {**(base_params or BASE_PARAMS),
-              "lambda": 20}
-    print("[MC-C3] Finding optimal staffing...")
-
-    for c in range(1, 11):
-        replications = []
+              "n_doctors": 3}
+    results = []
+    for lam in [10, 20, 30, 40]:
+        p = {**params, "lambda": lam}
+        reps = []
         for i in range(n_replications):
             rep = run_single_replication(
-                params, n_doctors=c, seed=i*7)
-            replications.append(rep)
+                p, n_doctors=3, seed=i*100)
+            reps.append(rep)
+        red_waits = [r["red_avg_wait"] for r in reps]
+        results.append({
+            "scenario":       f"λ={lam}",
+            "p_red_breach":   round(sum(r["red_breach"]
+                              for r in reps) /
+                              n_replications * 100, 1),
+            "p_queue_breach": round(sum(r["queue_breach"]
+                              for r in reps) /
+                              n_replications * 100, 1),
+            "red_wait_mean":  round(np.mean(red_waits), 2),
+            "red_wait_ci_lo": round(
+                np.percentile(red_waits, 2.5), 2),
+            "red_wait_ci_hi": round(
+                np.percentile(red_waits, 97.5), 2),
+        })
+    return results
 
-        p_red   = sum(r["red_breach"]
-                      for r in replications
-                      ) / n_replications * 100
-        p_green = sum(r["green_breach"]
-                      for r in replications
-                      ) / n_replications * 100
-        util    = np.mean([r["utilization"]
-                           for r in replications])
-
-        print(f"  c={c}: P(Red)={p_red:.1f}% | "
-              f"P(Green)={p_green:.1f}% | "
-              f"Util={util:.1f}%")
-
-        cond_red   = p_red   < 5.0
-        cond_green = p_green < 10.0
-        cond_util  = 60.0 < util < 90.0
-
-        if cond_red and cond_green and cond_util:
-            print(f"\n✅ OPTIMAL: c={c} doctors")
-            print(f"   P(Red wait>5min)  = {p_red:.1f}%  < 5%")
-            print(f"   P(Green wait>60m) = {p_green:.1f}% < 10%")
-            print(f"   Utilization       = {util:.1f}%  in 60-90%")
-            return {
-                "optimal_doctors": c,
-                "p_red_breach":    round(p_red, 1),
-                "p_green_breach":  round(p_green, 1),
-                "utilization":     round(util, 1),
-                "conditions_met":  True
-            }
-
-    return {
-        "optimal_doctors": None,
-        "conditions_met":  False,
-        "message": "No c in range 1-10 satisfies all conditions at λ=20"
-    }
+def find_optimal_staffing(base_params=None,
+                          n_replications=100):
+    """Legacy wrapper."""
+    return mc_optimal_doctors(base_params, n_replications)
