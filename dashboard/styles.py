@@ -8,7 +8,7 @@ MEDICAL_CSS = """
 .stApp, html, body {
   background-color: #0B132B !important;
   color: #F1F5F9 !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Raleway', sans-serif !important;
 }
 
 /* Force sidebar background to even darker slate */
@@ -44,8 +44,14 @@ h1, h2, h3, h4, h5, h6 {
   padding: 1.5rem 2.5rem 3rem !important;
   max-width: 1280px !important;
 }
-#MainMenu, footer, header { visibility: hidden; }
-.stDeployButton { display: none; }
+#MainMenu, footer { visibility: hidden !important; }
+header[data-testid="stHeader"] {
+  background-color: transparent !important;
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+.stDeployButton { display: none !important; }
 
 /* Buttons styling */
 .stButton > button {
@@ -280,3 +286,32 @@ def render_priority_legend():
     </div>Black – DOA
   </div>
 </div>""", unsafe_allow_html=True)
+
+
+def render_risk_card(label: str, probability: float, description: str):
+    if probability < 10.0:
+        color = "#10B981" # Emerald Green
+        bg = "#0C2B1B"
+        border = "rgba(16, 185, 129, 0.2)"
+        status = "Low Risk"
+    elif probability < 40.0:
+        color = "#F59E0B" # Amber Yellow
+        bg = "#2B2211"
+        border = "rgba(245, 158, 11, 0.2)"
+        status = "Moderate Risk"
+    else:
+        color = "#EF4444" # Crimson Red
+        bg = "#371318"
+        border = "rgba(239, 68, 68, 0.2)"
+        status = "High Risk"
+        
+    card_html = f"""
+    <div style="background:{bg}; border: 1px solid {border}; border-top: 4px solid {color}; border-radius: 8px; padding: 1.2rem; min-height: 140px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 12px;">
+      <div style="font-size: 0.72rem; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">{label}</div>
+      <div style="font-size: 2.2rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 0.2rem;">{probability:.1f}%</div>
+      <div style="font-size: 0.78rem; font-weight: 600; color: {color}; margin-bottom: 0.5rem;">{status}</div>
+      <div style="font-size: 0.75rem; color: #94A3B8; line-height: 1.4;">{description}</div>
+    </div>
+    """
+    st.markdown(card_html, unsafe_allow_html=True)
+

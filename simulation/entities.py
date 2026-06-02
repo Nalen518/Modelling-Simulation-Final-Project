@@ -13,7 +13,9 @@ class Patient:
     id:               int
     priority:         Priority
     arrival_time:     float
+    registration_start: float = 0.0
     registration_end: float = 0.0
+    triage_start:     float = 0.0
     triage_end:       float = 0.0
     treatment_start:  float = 0.0
     treatment_end:    float = 0.0

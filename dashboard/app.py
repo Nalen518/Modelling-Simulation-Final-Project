@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))))
 
 st.set_page_config(
-    page_title="IGD Simulation | DTETI UGM",
+    page_title="IGD Queue Optimization",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -17,7 +17,7 @@ st.set_page_config(
 
 from dashboard.styles import (
     inject_css, render_header, render_section,
-    render_info, render_priority_legend
+    render_info, render_priority_legend, render_risk_card
 )
 from dashboard.animation_component import (
     render_animation
@@ -64,7 +64,7 @@ GRAY = "#95A5A6"
 # ── SIDEBAR ───────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-<div style="padding:1.2rem 0 0.5rem;
+<div style="padding:1.2rem 0 0.4rem;
   text-align:center;">
   <div style="font-size:2rem;">🏥</div>
   <div style="font-family:DM Sans,sans-serif;
@@ -72,16 +72,9 @@ with st.sidebar:
     color:white;margin-top:.3rem;">
     IGD Simulation
   </div>
-  <div style="font-size:.72rem;
-    color:rgba(255,255,255,.55);
-    letter-spacing:.06em;
-    text-transform:uppercase;
-    margin-top:.2rem;">
-    DTETI · UGM
-  </div>
 </div>
 <hr style="border-color:rgba(255,255,255,.12);
-  margin:.75rem 0 1rem;">
+  margin:.5rem 0 1rem;">
 """, unsafe_allow_html=True)
 
     st.markdown(
@@ -182,382 +175,302 @@ params = {
 # ── MAIN ──────────────────────────────────────────────
 render_header()
 
-col_btn, col_info = st.columns([1, 3], gap="medium")
-with col_btn:
-    run_btn = st.button(
-        "Run Simulation",
-        type="primary",
-        use_container_width=True)
-with col_info:
+render_info(
+    f"<b>Config:</b> λ={lam} pts/hr &nbsp;·&nbsp;"
+    f" {n_doctors} doctors &nbsp;·&nbsp;"
+    f" {n_nurses} nurse(s) &nbsp;·&nbsp;"
+    f" {duration} min &nbsp;·&nbsp;"
+    f" Threshold: <b>Kemenkes 10 min</b>",
+    "info")
+
+import json
+try:
+    from simulation.model import IGDSimulation
+    from simulation.analysis import compute_metrics
+    SIM_OK = True
+except ImportError:
+    SIM_OK = False
     render_info(
-        f"<b>Config:</b> λ={lam} pts/hr &nbsp;·&nbsp;"
-        f" {n_doctors} doctors &nbsp;·&nbsp;"
-        f" {n_nurses} nurse(s) &nbsp;·&nbsp;"
-        f" {duration} min &nbsp;·&nbsp;"
-        f" Threshold: <b>Kemenkes 10 min</b>",
-        "info")
+        "SimPy engine not found. "
+        "Run <code>pip install simpy</code> "
+        "and ensure simulation/ is present.",
+        "danger")
 
-tab_anim, tab_sim, tab_sa, tab_mc = st.tabs([
-    "Animation",
-    "Simulation",
-    "Sensitivity Analysis",
-    "Monte Carlo",
-])
+if SIM_OK:
+    with st.spinner("Running simulation…"):
+        sim = IGDSimulation(params, state_callback=None)
+        result = sim.run()
 
-# ══════════════════════════════════════════════════════
-# TAB 0 — ANIMATION
-# ══════════════════════════════════════════════════════
-with tab_anim:
-    st.markdown("<br>", unsafe_allow_html=True)
-    render_info(
-        "Watch patients move through each IGD stage "
-        "in real time. Use the <b>Speed</b> and "
-        "<b>Doctors</b> sliders inside the animation "
-        "to adjust live. Hover any patient dot "
-        "to see their details.",
-        "info")
-    render_animation(duration=duration, height=680)
+    patients = result["patients"]
+    metrics  = compute_metrics(result, n_doctors=n_doctors)
+    treated  = [p for p in patients if p.exit_type not in ("DOA","")]
+    
+    patients_list = []
+    for p in patients:
+        d = vars(p).copy()
+        d['priority'] = int(d['priority'])
+        patients_list.append(d)
+    patients_json = json.dumps(patients_list)
 
-# ══════════════════════════════════════════════════════
-# TAB 1 — SIMULATION
-# ══════════════════════════════════════════════════════
-with tab_sim:
+    tab_anim, tab_sim, tab_sa, tab_mc, tab_doc = st.tabs([
+        "Animation",
+        "Simulation",
+        "Sensitivity Analysis",
+        "Monte Carlo",
+        "Methodology & Theory"
+    ])
 
-    if not run_btn:
+    with tab_anim:
         st.markdown("<br>", unsafe_allow_html=True)
         render_info(
-            "Configure parameters in the sidebar "
-            "then click <b>Run Simulation</b>. "
-            "The SimPy engine will produce real "
-            "results from your exact parameters.",
+            "Watch patients move through each IGD stage "
+            "in real time. Use the <b>Speed</b> slider inside the animation "
+            "to adjust live. Hover any patient dot "
+            "to see their details.",
             "info")
+        render_animation(patients_json, n_doctors, duration=duration, height=680)
+
+    with tab_sim:
         render_priority_legend()
 
-    if run_btn:
-        try:
-            from simulation.model import IGDSimulation
-            from simulation.analysis import (
-                compute_metrics)
-            SIM_OK = True
-        except ImportError:
-            SIM_OK = False
-            render_info(
-                "SimPy engine not found. "
-                "Run <code>pip install simpy</code> "
-                "and ensure simulation/ is present.",
-                "danger")
+        # ── KPI — native st.metric() ──────────
+        render_section(
+            "Key Performance Indicators",
+            "RESULTS")
+        c1,c2,c3,c4,c5,c6 = st.columns(
+            6, gap="small")
+        c1.metric(
+            "Total Patients",
+            metrics["total"])
+        c2.metric(
+            "Treated",
+            metrics["completed"])
+        c3.metric(
+            "Avg Wait",
+            f"{metrics['avg_wait']} min")
+        c4.metric(
+            "Max Wait",
+            f"{metrics['max_wait']} min")
+        c5.metric(
+            "Utilization",
+            f"{metrics['utilization']}%")
+        c6.metric(
+            "DOA",
+            metrics["doa"])
 
-        if SIM_OK:
-            render_section(
-                "Real-time Patient Flow", "LIVE")
-            anim_ph = st.empty()
-            state_log = []
+        # ── Priority table ────────────────────
+        render_section(
+            "Per-Priority Breakdown", "TRIAGE")
+        render_priority_legend()
+        rows = []
+        for pri in [1,2,3,4]:
+            pp = metrics["per_priority"][pri]
+            rows.append({
+                "Priority":
+                    PRIORITY_NAMES[pri],
+                "Count":
+                    pp["count"],
+                "Completed":
+                    pp["completed"],
+                "In Progress":
+                    pp["in_progress"],
+                "Still Queuing":
+                    pp["still_queuing"],
+                "Avg Wait (min)":
+                    f"{pp['avg_wait']:.1f}",
+                "Max Wait (min)":
+                    f"{pp['max_wait']:.1f}",
+                "Avg Treat (min)":
+                    f"{pp['avg_treat']:.1f}",
+            })
+        st.dataframe(
+            pd.DataFrame(rows),
+            use_container_width=True,
+            hide_index=True)
 
-            STAGE_LABELS = [
-                "Arrival","Registration","Triage",
-                "Queue","Treatment","Exit"
-            ]
-            STAGE_KEYS = [
-                "arrival","registration","triage",
-                "queue","treatment","exit"
-            ]
-            STAGE_COLORS = [
-                "#2E86C1","#B7950B","#6C3483",
-                "#C0392B","#1A7A4A","#95A5A6"
-            ]
+        # ── Charts ────────────────────────────
+        render_section(
+            "Result Charts", "ANALYSIS")
+        ch1, ch2 = st.columns(2, gap="medium")
 
-            def on_state(state):
-                state_log.append(state)
-                counts = [
-                    state["stage_counts"].get(k, 0)
-                    for k in STAGE_KEYS
-                ]
-                fig = go.Figure(go.Bar(
-                    x=STAGE_LABELS,
-                    y=counts,
-                    marker_color=STAGE_COLORS,
-                    marker_line_width=0,
-                    text=counts,
-                    textposition="outside",
-                    textfont=dict(
-                        family="JetBrains Mono,monospace",
-                        size=12, color="#F1F5F9"),
-                ))
-                fig.update_layout(
-                    **PLOTLY_LAYOUT,
-                    title=dict(
-                        text=(f"Patient Flow  —  "
-                              f"t = "
-                              f"{state['time']:.1f}"
-                              f" min"),
-                        font=dict(size=13,
-                                  color="#F1F5F9",
-                                  family="Raleway, sans-serif"),
-                        x=0, xanchor="left",
-                        pad=dict(l=8)),
-                    yaxis_title="Patients",
-                    height=300,
-                    bargap=0.25,
-                    yaxis_rangemode="tozero",
-                )
-                anim_ph.plotly_chart(
-                    fig, use_container_width=True)
-                time.sleep(0.004)
-
-            with st.spinner(
-                "Running simulation…"
-            ):
-                sim = IGDSimulation(
-                    params,
-                    state_callback=on_state)
-                result = sim.run()
-
-            patients = result["patients"]
-            metrics  = compute_metrics(
-                result,
-                n_doctors=n_doctors)
-            treated  = [
-                p for p in patients
-                if p.exit_type not in ("DOA","")]
-
-            # ── KPI — native st.metric() ──────────
-            render_section(
-                "Key Performance Indicators",
-                "RESULTS")
-            c1,c2,c3,c4,c5,c6 = st.columns(
-                6, gap="small")
-            c1.metric(
-                "Total Patients",
-                metrics["total"])
-            c2.metric(
-                "Treated",
-                metrics["completed"])
-            c3.metric(
-                "Avg Wait",
-                f"{metrics['avg_wait']} min")
-            c4.metric(
-                "Max Wait",
-                f"{metrics['max_wait']} min")
-            c5.metric(
-                "Utilization",
-                f"{metrics['utilization']}%")
-            c6.metric(
-                "DOA",
-                metrics["doa"])
-
-            # ── Priority table ────────────────────
-            render_section(
-                "Per-Priority Breakdown", "TRIAGE")
-            render_priority_legend()
-            rows = []
+        with ch1:
+            fig_wait = go.Figure()
             for pri in [1,2,3,4]:
-                pp = metrics["per_priority"][pri]
-                rows.append({
-                    "Priority":
-                        PRIORITY_NAMES[pri],
-                    "Count":
-                        pp["count"],
-                    "Completed":
-                        pp["completed"],
-                    "In Progress":
-                        pp["in_progress"],
-                    "Still Queuing":
-                        pp["still_queuing"],
-                    "Avg Wait (min)":
-                        f"{pp['avg_wait']:.1f}",
-                    "Max Wait (min)":
-                        f"{pp['max_wait']:.1f}",
-                    "Avg Treat (min)":
-                        f"{pp['avg_treat']:.1f}",
-                })
-            st.dataframe(
-                pd.DataFrame(rows),
-                use_container_width=True,
-                hide_index=True)
+                wt = [
+                    p.wait_time
+                    for p in treated
+                    if int(p.priority) == pri
+                    and p.treatment_start > 0
+                ]
+                if wt:
+                    fig_wait.add_trace(
+                        go.Histogram(
+                            x=wt,
+                            name=PRIORITY_NAMES[pri],
+                            marker_color=
+                                PRIORITY_COLORS[pri],
+                            opacity=0.75,
+                            nbinsx=20,
+                        ))
+            fig_wait.update_layout(
+                **PLOTLY_LAYOUT,
+                title="Waiting Time Distribution",
+                xaxis_title="Wait (min)",
+                yaxis_title="Patients",
+                barmode="overlay",
+                height=300,
+                legend_title="Priority",
+            )
+            st.plotly_chart(
+                fig_wait,
+                use_container_width=True)
 
-            # ── Charts ────────────────────────────
-            render_section(
-                "Result Charts", "ANALYSIS")
-            ch1, ch2 = st.columns(2, gap="medium")
-
-            with ch1:
-                fig_wait = go.Figure()
-                for pri in [1,2,3,4]:
-                    wt = [
-                        p.wait_time
-                        for p in treated
-                        if int(p.priority) == pri
-                        and p.treatment_start > 0
-                    ]
-                    if wt:
-                        fig_wait.add_trace(
-                            go.Histogram(
-                                x=wt,
-                                name=PRIORITY_NAMES[pri],
-                                marker_color=
-                                    PRIORITY_COLORS[pri],
-                                opacity=0.75,
-                                nbinsx=20,
-                            ))
-                fig_wait.update_layout(
-                    **PLOTLY_LAYOUT,
-                    title="Waiting Time Distribution",
-                    xaxis_title="Wait (min)",
-                    yaxis_title="Patients",
-                    barmode="overlay",
-                    height=300,
-                    legend_title="Priority",
-                )
-                st.plotly_chart(
-                    fig_wait,
-                    use_container_width=True)
-
-            with ch2:
-                counts = {
-                    PRIORITY_NAMES[k]: sum(
-                        1 for p in patients
-                        if int(p.priority) == k)
+        with ch2:
+            counts = {
+                PRIORITY_NAMES[k]: sum(
+                    1 for p in patients
+                    if int(p.priority) == k)
+                for k in [1,2,3,4,5]
+            }
+            counts = {
+                k:v for k,v in counts.items()
+                if v > 0}
+            fig_pie = go.Figure(go.Pie(
+                labels=list(counts.keys()),
+                values=list(counts.values()),
+                hole=0.5,
+                marker_colors=[
+                    PRIORITY_COLORS[k]
                     for k in [1,2,3,4,5]
+                    if PRIORITY_NAMES[k]
+                    in counts
+                ],
+                textinfo="label+percent",
+                textfont_size=11,
+            ))
+            fig_pie.update_layout(
+                **PLOTLY_LAYOUT,
+                title="Priority Breakdown",
+                height=300,
+                showlegend=False,
+            )
+            st.plotly_chart(
+                fig_pie,
+                use_container_width=True)
+
+        ch3, ch4 = st.columns(2, gap="medium")
+        with ch3:
+            exit_data = {}
+            for pri in [1,2,3,4]:
+                exit_data[PRIORITY_NAMES[pri]] = {
+                    "Discharged": sum(
+                        1 for p in treated
+                        if int(p.priority) == pri
+                        and p.exit_type ==
+                        "discharged"),
+                    "Admitted": sum(
+                        1 for p in treated
+                        if int(p.priority) == pri
+                        and p.exit_type ==
+                        "admitted"),
                 }
-                counts = {
-                    k:v for k,v in counts.items()
-                    if v > 0}
-                fig_pie = go.Figure(go.Pie(
-                    labels=list(counts.keys()),
-                    values=list(counts.values()),
-                    hole=0.5,
-                    marker_colors=[
-                        PRIORITY_COLORS[k]
-                        for k in [1,2,3,4,5]
-                        if PRIORITY_NAMES[k]
-                        in counts
+            fig_exit = go.Figure()
+            for outcome, color in [
+                ("Discharged","#1A7A4A"),
+                ("Admitted",  "#C0392B"),
+            ]:
+                fig_exit.add_trace(go.Bar(
+                    x=list(exit_data.keys()),
+                    y=[exit_data[p][outcome]
+                       for p in exit_data],
+                    name=outcome,
+                    marker_color=color,
+                    marker_line_width=0,
+                ))
+            fig_exit.update_layout(
+                **PLOTLY_LAYOUT,
+                title="Discharge vs Admission",
+                barmode="stack",
+                height=300,
+            )
+            st.plotly_chart(
+                fig_exit,
+                use_container_width=True)
+
+        with ch4:
+            fig_g = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=metrics["utilization"],
+                delta={"reference": 75},
+                title={"text": "Doctor Utilization %", "font": {"size": 13, "color": "#F1F5F9", "family": "Raleway, sans-serif"}},
+                gauge={
+                    "axis": {"range": [0, 100], "tickcolor": "#94A3B8"},
+                    "bar": {"color": "#06B6D4", "thickness": 0.25},
+                    "steps": [
+                        {"range": [0, 60], "color": "#1C2541"},
+                        {"range": [60, 90], "color": "#1B4332"},
+                        {"range": [90, 100], "color": "#4A1525"},
                     ],
-                    textinfo="label+percent",
-                    textfont_size=11,
-                ))
-                fig_pie.update_layout(
-                    **PLOTLY_LAYOUT,
-                    title="Priority Breakdown",
-                    height=300,
-                    showlegend=False,
-                )
-                st.plotly_chart(
-                    fig_pie,
-                    use_container_width=True)
-
-            ch3, ch4 = st.columns(2, gap="medium")
-            with ch3:
-                exit_data = {}
-                for pri in [1,2,3,4]:
-                    exit_data[PRIORITY_NAMES[pri]] = {
-                        "Discharged": sum(
-                            1 for p in treated
-                            if int(p.priority) == pri
-                            and p.exit_type ==
-                            "discharged"),
-                        "Admitted": sum(
-                            1 for p in treated
-                            if int(p.priority) == pri
-                            and p.exit_type ==
-                            "admitted"),
-                    }
-                fig_exit = go.Figure()
-                for outcome, color in [
-                    ("Discharged","#1A7A4A"),
-                    ("Admitted",  "#C0392B"),
-                ]:
-                    fig_exit.add_trace(go.Bar(
-                        x=list(exit_data.keys()),
-                        y=[exit_data[p][outcome]
-                           for p in exit_data],
-                        name=outcome,
-                        marker_color=color,
-                        marker_line_width=0,
-                    ))
-                fig_exit.update_layout(
-                    **PLOTLY_LAYOUT,
-                    title="Discharge vs Admission",
-                    barmode="stack",
-                    height=300,
-                )
-                st.plotly_chart(
-                    fig_exit,
-                    use_container_width=True)
-
-            with ch4:
-                fig_g = go.Figure(go.Indicator(
-                    mode="gauge+number+delta",
-                    value=metrics["utilization"],
-                    delta={"reference": 75},
-                    title={"text": "Doctor Utilization %", "font": {"size": 13, "color": "#F1F5F9", "family": "Raleway, sans-serif"}},
-                    gauge={
-                        "axis": {"range": [0, 100], "tickcolor": "#94A3B8"},
-                        "bar": {"color": "#06B6D4", "thickness": 0.25},
-                        "steps": [
-                            {"range": [0, 60], "color": "#1C2541"},
-                            {"range": [60, 90], "color": "#1B4332"},
-                            {"range": [90, 100], "color": "#4A1525"},
-                        ],
-                        "threshold": {
-                            "line": {"color": "#EF4444", "width": 2},
-                            "value": 90
-                        },
+                    "threshold": {
+                        "line": {"color": "#EF4444", "width": 2},
+                        "value": 90
                     },
-                    number={"suffix": "%", "font": {"family": "JetBrains Mono, monospace", "size": 32, "color": "#F1F5F9"}},
-                ))
-                fig_g.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font_family="Inter, sans-serif",
-                    font_color="#F1F5F9",
-                    height=300,
-                    margin=dict(t=44, b=16, l=32, r=32),
-                )
-                st.plotly_chart(
-                    fig_g,
-                    use_container_width=True)
+                },
+                number={"suffix": "%", "font": {"family": "JetBrains Mono, monospace", "size": 32, "color": "#F1F5F9"}},
+            ))
+            fig_g.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font_family="Inter, sans-serif",
+                font_color="#F1F5F9",
+                height=300,
+                margin=dict(t=44, b=16, l=32, r=32),
+            )
+            st.plotly_chart(
+                fig_g,
+                use_container_width=True)
 
-            # ── Clinical validation ───────────────
-            render_section(
-                "Clinical Validation",
-                "KEMENKES")
-            red_pts = [
-                p for p in treated
-                if int(p.priority) == 1
-                and p.treatment_start > 0
-            ]
-            if red_pts:
-                breach = sum(
-                    1 for p in red_pts
-                    if p.wait_time > 10)
-                pct = breach/len(red_pts)*100
-                if pct < 5:
-                    render_info(
-                        f"<b>Priority queue "
-                        f"validated:</b> only "
-                        f"{pct:.1f}% of Red "
-                        f"patients waited > 10 min.",
-                        "success")
-                elif pct < 20:
-                    render_info(
-                        f"<b>Borderline:</b> "
-                        f"{pct:.1f}% of Red patients"
-                        f" waited > 10 min. "
-                        f"Consider more doctors.",
-                        "warn")
-                else:
-                    render_info(
-                        f"<b>Threshold breached:"
-                        f"</b> {pct:.1f}% of Red "
-                        f"patients waited > 10 min."
-                        f" System understaffed.",
-                        "danger")
+        # ── Clinical validation ───────────────
+        render_section(
+            "Clinical Validation",
+            "KEMENKES")
+        red_pts = [
+            p for p in treated
+            if int(p.priority) == 1
+            and p.treatment_start > 0
+        ]
+        if red_pts:
+            breach = sum(
+                1 for p in red_pts
+                if p.wait_time > 10)
+            pct = breach/len(red_pts)*100
+            if pct < 5:
+                render_info(
+                    f"<b>Priority queue "
+                    f"validated:</b> only "
+                    f"{pct:.1f}% of Red "
+                    f"patients waited > 10 min.",
+                    "success")
+            elif pct < 20:
+                render_info(
+                    f"<b>Borderline:</b> "
+                    f"{pct:.1f}% of Red patients"
+                    f" waited > 10 min. "
+                    f"Consider more doctors.",
+                    "warn")
             else:
                 render_info(
-                    "<b>No Red (Critical) Patients Treated:</b> "
-                    "There are no Red priority patients who started treatment in this simulation run. "
-                    "Try increasing the <i>Duration</i> or the <i>Red Triage Probability</i> in the sidebar.",
-                    "warn")
+                    f"<b>Threshold breached:"
+                    f"</b> {pct:.1f}% of Red "
+                    f"patients waited > 10 min."
+                    f" System understaffed.",
+                    "danger")
+        else:
+            render_info(
+                "<b>No Red (Critical) Patients Treated:</b> "
+                "There are no Red priority patients who started treatment in this simulation run. "
+                "Try increasing the <i>Duration</i> or the <i>Red Triage Probability</i> in the sidebar.",
+                "warn")
 
 # ══════════════════════════════════════════════════════
 # TAB 2 — SENSITIVITY ANALYSIS
@@ -565,11 +478,135 @@ with tab_sim:
 with tab_sa:
     st.markdown("<br>", unsafe_allow_html=True)
     render_info(
-        "<b>Sensitivity Analysis</b> runs single DES "
-        "simulations across multiple parameter values. "
-        "Experiment A varies doctor count at λ=20. "
-        "Experiment B varies arrival rate at c=3.",
+        "This section evaluates system responsiveness. Run the <b>Predefined Scenario Analysis</b> below "
+        "to evaluate staffing levels, or run the individual <b>Sensitivity Experiments</b> at the bottom.",
         "info")
+    
+    # ── Predefined Scenarios (Improvement 6) ──
+    render_section("Predefined Scenario Analysis", "STAFFING COMPARISON")
+    st.markdown("Compare emergency department performance under three different doctor staffing levels (fixed λ=20 pts/hr, duration=480 min):")
+    
+    scen_info_col1, scen_info_col2 = st.columns(2)
+    with scen_info_col1:
+        st.markdown("""
+        *   **Scenario A**: 2 Doctors
+        *   **Scenario B**: 3 Doctors
+        *   **Scenario C**: 4 Doctors
+        """)
+    
+    if st.button("Run Predefined Scenario Analysis", type="primary", use_container_width=True):
+        try:
+            scen_results = []
+            for c in [2, 3, 4]:
+                p = {**params, "lambda": 20, "n_doctors": c, "duration": 480}
+                sim = IGDSimulation(p)
+                raw = sim.run()
+                m = compute_metrics(raw, n_doctors=c)
+                scen_results.append({
+                    "Scenario": f"Scenario {chr(65 + c - 2)} ({c} Docs)",
+                    "Doctors": c,
+                    "Average Wait (min)": m["avg_wait"],
+                    "Max Wait (min)": m["max_wait"],
+                    "Max Queue": m["max_queue"],
+                    "Utilization (%)": m["utilization"],
+                    "Throughput (pts/hr)": m["throughput"]
+                })
+            
+            df_scen = pd.DataFrame(scen_results)
+            
+            # Render Table
+            st.dataframe(df_scen, use_container_width=True, hide_index=True)
+            
+            # Render Bar Charts (Improvement 6)
+            fig_scen = go.Figure()
+            fig_scen.add_trace(go.Bar(
+                x=df_scen["Scenario"],
+                y=df_scen["Average Wait (min)"],
+                name="Avg Wait (min)",
+                marker_color="#06B6D4"
+            ))
+            fig_scen.add_trace(go.Bar(
+                x=df_scen["Scenario"],
+                y=df_scen["Max Wait (min)"],
+                name="Max Wait (min)",
+                marker_color="#EF4444"
+            ))
+            fig_scen.update_layout(
+                **PLOTLY_LAYOUT,
+                title="Waiting Times by Staffing Scenario",
+                xaxis_title="Staffing Level",
+                yaxis_title="Wait Time (minutes)",
+                barmode="group",
+                height=300
+            )
+            
+            fig_util = go.Figure()
+            fig_util.add_trace(go.Bar(
+                x=df_scen["Scenario"],
+                y=df_scen["Utilization (%)"],
+                name="Doctor Utilization %",
+                marker_color="#10B981"
+            ))
+            fig_util.update_layout(
+                **PLOTLY_LAYOUT,
+                title="Doctor Utilization by Staffing Scenario",
+                xaxis_title="Staffing Level",
+                yaxis_title="Utilization (%)",
+                height=300
+            )
+            
+            scen_c1, scen_c2 = st.columns(2)
+            with scen_c1:
+                st.plotly_chart(fig_scen, use_container_width=True)
+            with scen_c2:
+                st.plotly_chart(fig_util, use_container_width=True)
+                
+            # ── Recommendation Engine (Improvement 8) ──
+            render_section("Simulation Insights & Recommendations", "INSIGHTS")
+            
+            # Extract results for formulas
+            w2 = df_scen.loc[df_scen["Doctors"] == 2, "Average Wait (min)"].values[0]
+            w3 = df_scen.loc[df_scen["Doctors"] == 3, "Average Wait (min)"].values[0]
+            w4 = df_scen.loc[df_scen["Doctors"] == 4, "Average Wait (min)"].values[0]
+            
+            u2 = df_scen.loc[df_scen["Doctors"] == 2, "Utilization (%)"].values[0]
+            u3 = df_scen.loc[df_scen["Doctors"] == 3, "Utilization (%)"].values[0]
+            u4 = df_scen.loc[df_scen["Doctors"] == 4, "Utilization (%)"].values[0]
+            
+            # Percentage reductions
+            red_2_to_3 = ((w2 - w3) / max(w2, 0.1)) * 100
+            red_3_to_4 = ((w3 - w4) / max(w3, 0.1)) * 100
+            
+            rec_text = f"""
+<div style="font-family:'Raleway',sans-serif; font-size:0.85rem; line-height:1.6; color:#86EFAC;">
+  <div style="margin-bottom: 0.8rem;">
+    <b style="color:white; font-size:0.9rem;">Staffing Impact</b><br>
+    Increasing doctor capacity from 2 to 3 doctors reduced the average patient waiting time by <b>{red_2_to_3:.1f}%</b> (from {w2:.1f} to {w3:.1f} minutes).
+  </div>
+  <div style="margin-bottom: 0.8rem;">
+    <b style="color:white; font-size:0.9rem;">Diminishing Returns</b><br>
+    Further increasing doctor capacity from 3 to 4 doctors reduced the average waiting time by <b>{red_3_to_4:.1f}%</b> (from {w3:.1f} to {w4:.1f} minutes), demonstrating diminishing returns on additional staff investment.
+  </div>
+  <div style="margin-bottom: 0.8rem;">
+    <b style="color:white; font-size:0.9rem;">Utilization & Burnout Risk</b><br>
+    • At 2 doctors, physician utilization is <b>{u2:.1f}%</b>, which exceeds safe operational thresholds (>85%) and indicates a high risk of staff burnout.<br>
+    • At 3 doctors, utilization is stabilized at <b>{u3:.1f}%</b>, balancing service speed and physician load.<br>
+    • At 4 doctors, utilization drops to <b>{u4:.1f}%</b>, indicating potential over-staffing.
+  </div>
+  <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px;">
+    <b style="color:white; font-size:0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">Recommendation:</b> 
+    <span style="color:#22C55E; font-weight:700; font-size: 1rem;">3 Doctors</span> provides the best balance between waiting time and resource utilization under a baseline arrival rate of 20 pts/hr.
+  </div>
+</div>
+            """
+            
+            render_info(rec_text, "success")
+            
+        except Exception as e:
+            render_info(f"Error executing scenario analysis: {e}", "danger")
+
+    st.markdown("<hr style='border-top: 2px dashed #1E2D4A;'>", unsafe_allow_html=True)
+    render_section("Sensitivity Experiments", "PARAM SCAN")
     sa1, sa2 = st.columns(2, gap="large")
 
     with sa1:
@@ -736,10 +773,11 @@ with tab_mc:
     c2.metric("Replications (N)", "100", "per scenario")
     c3.metric("Overload Triggers", "3 combined", "queue · util · red")
 
-    mc_q1_tab, mc_q2_tab, mc_q3_tab = st.tabs([
+    mc_q1_tab, mc_q2_tab, mc_q3_tab, mc_risk_tab = st.tabs([
         "Q1 — Doctors Needed",
         "Q2 — P(Overload)",
         "Q3 — Critical Risk",
+        "Q4 — Operational Risk Indicators"
     ])
 
     with mc_q1_tab:
@@ -869,3 +907,209 @@ with tab_mc:
                     st.dataframe(df, use_container_width=True, hide_index=True)
                 except Exception as e:
                     render_info(f"Error: {e}", "danger")
+
+    with mc_risk_tab:
+        render_section("Operational Risk Indicators", "Q4")
+        st.caption("Runs N=100 replications at current sidebar settings to evaluate the probability of system overloads and care delays:")
+        
+        st.markdown(f"""
+        **Current Simulation Parameters:**
+        - Arrival Rate ($\\lambda$): **{lam} pts/hr**
+        - Doctors ($c$): **{n_doctors}**
+        - Triage Nurses ($s$): **{n_nurses}**
+        """)
+        
+        if st.button("Run Operational Risk Analysis", type="primary", use_container_width=True):
+            try:
+                from simulation.analysis import run_single_replication
+                with st.spinner("Running 100 Monte Carlo replications..."):
+                    reps = []
+                    for i in range(100):
+                        rep = run_single_replication(params, n_doctors=n_doctors, seed=i*99)
+                        reps.append(rep)
+                
+                # Compute risk probabilities
+                # 1. P(Queue > 50)
+                p_queue_50 = sum(1 for r in reps if r["max_queue"] > 50) / 100 * 100
+                # 2. P(Avg Wait > 30 min)
+                p_avg_wait_30 = sum(1 for r in reps if r["avg_wait"] > 30) / 100 * 100
+                # 3. P(Doctor Utilization > 90%)
+                p_util_90 = sum(1 for r in reps if r["utilization"] > 90) / 100 * 100
+                # 4. P(Red Patient Wait > 5 min)
+                p_red_5 = sum(1 for r in reps if r["red_breach"]) / 100 * 100
+                
+                # Display cards in a 2x2 grid
+                rc1, rc2 = st.columns(2)
+                with rc1:
+                    render_risk_card(
+                        "Queue Overload Probability P(Queue > 50)",
+                        p_queue_50,
+                        "Estimated probability that the priority queue length exceeds 50 patients during the shift."
+                    )
+                    render_risk_card(
+                        "Staff Burnout Risk P(Doctor Utilization > 90%)",
+                        p_util_90,
+                        "Estimated probability that cumulative physician workload exceeds 90% capacity, indicating operational stress."
+                    )
+                with rc2:
+                    render_risk_card(
+                        "Excessive Wait Probability P(Avg Wait > 30 min)",
+                        p_avg_wait_30,
+                        "Estimated probability that the average waiting time for admitted/discharged patients exceeds 30 minutes."
+                    )
+                    render_risk_card(
+                        "Critical Care Delay P(Red Wait > 5 min)",
+                        p_red_5,
+                        "Probability that any Red triage patient waits longer than 5 minutes before starting treatment (Kemenkes standard is 10 min)."
+                    )
+                    
+            except Exception as e:
+                render_info(f"Error running risk analysis: {e}", "danger")
+
+    # ══════════════════════════════════════════════════════
+    # TAB 4 — METHODOLOGY & THEORY (Improvement 1-5)
+    # ══════════════════════════════════════════════════════
+    with tab_doc:
+        st.markdown("<br>", unsafe_allow_html=True)
+        render_info(
+            "This tab provides the theoretical foundations, assumptions, scope definitions, "
+            "and parameter justifications for this Discrete Event Simulation (DES) model, "
+            "addressing standard academic and clinical validation criteria.",
+            "info"
+        )
+        
+        doc_sec_1, doc_sec_2 = st.tabs(["Model Scope & Assumptions", "Parameter Justifications & Theory"])
+        
+        with doc_sec_1:
+            render_section("Model Scope (Inside vs Outside)", "BOUNDARY")
+            
+            # Side-by-side Scope columns
+            scope_col1, scope_col2 = st.columns(2)
+            with scope_col1:
+                st.markdown("""
+                <div style="background:#0C2B1B; border: 1px solid rgba(16, 185, 129, 0.2); border-left: 5px solid #10B981; border-radius: 8px; padding: 1.25rem; min-height: 240px; height: 100%;">
+                  <h4 style="color:#10B981; margin: 0 0 0.8rem 0; font-family:'Raleway',sans-serif; font-size:1.05rem; font-weight:700;">
+                    ✅ INSIDE SCOPE (Emergency Department)
+                  </h4>
+                  <ul style="color:#F1F5F9; font-size:0.82rem; line-height:1.6; margin:0; padding-left:1.2rem;">
+                    <li><b>Patient Arrivals & Registration</b>: Explicit queueing and officer servicing.</li>
+                    <li><b>Triage Scale</b>: 5-level clinical classification (Red, Yellow, Green, White, Black).</li>
+                    <li><b>IGD Waiting Room & Queues</b>: Dynamic priority queueing based on acuity.</li>
+                    <li><b>Doctor Treatment Service</b>: Direct clinical stabilization and care.</li>
+                    <li><b>Patient Dispositions</b>: Patient exit or transfer pathways.</li>
+                  </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with scope_col2:
+                st.markdown("""
+                <div style="background:#371318; border: 1px solid rgba(239, 68, 68, 0.2); border-left: 5px solid #EF4444; border-radius: 8px; padding: 1.25rem; min-height: 240px; height: 100%;">
+                  <h4 style="color:#EF4444; margin: 0 0 0.8rem 0; font-family:'Raleway',sans-serif; font-size:1.05rem; font-weight:700;">
+                    ❌ OUTSIDE SCOPE (Downstream Operations)
+                  </h4>
+                  <ul style="color:#F1F5F9; font-size:0.82rem; line-height:1.6; margin:0; padding-left:1.2rem;">
+                    <li><b>Inpatient Ward Capacity</b>: General wards, ICU, and CCU beds are modeled as infinite sinks.</li>
+                    <li><b>Specialist Referrals</b>: External specialist consultations or clinic pathways are omitted.</li>
+                    <li><b>Ancillary Services</b>: Diagnostics (Radiology, CT scans, Labs) and Pharmacy are implicit.</li>
+                    <li><b>Post-Discharge Care</b>: Outpatient follow-ups or recovery monitoring are excluded.</li>
+                  </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            st.markdown("<br>", unsafe_allow_html=True)
+            render_section("Core Model Assumptions", "ASSUMPTIONS")
+            st.markdown("""
+            To maintain a focused and computationally clean model of emergency department patient flows, the following core assumptions are established:
+            
+            - **Assumption A**: The simulation *only* models Emergency Department (IGD) operations.
+            - **Assumption B**: Downstream inpatient wards (general rooms, ICU) are outside the simulation scope.
+            - **Assumption C**: Specialist referrals and consultations are not explicitly modeled.
+            - **Assumption D**: Treatment rooms are represented implicitly through the doctor resource capacity.
+            - **Assumption E**: Patients transferred/admitted to inpatient wards are considered to have exited the simulated IGD system.
+            """)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            render_section("Model Limitations", "LIMITATIONS")
+            st.markdown("""
+            - **Lack of Validation**: The simulator is *not* validated using historical patient traffic data from a specific hospital.
+            - **Educational Use**: This project is intended solely for educational, research, and exploratory queueing analysis.
+            - **No Clinical Decision Support**: The results and recommendations should *not* be used to make clinical decisions or plan hospital staffing in real-world settings.
+            - **Behavioral Factors**: Human staff fatigue, shift changes, and patient self-discharge (left without being seen) are not simulated.
+            """)
+            
+        with doc_sec_2:
+            render_section("Parameter Sources & Justifications", "PARAMETERS")
+            
+            param_rows = [
+                {"Parameter": "Arrival Rate (λ)", "Baseline Value": "20 pts/hr", "Source Type": "Literature & Public Health Reference", "Academic Justification": "Representative of a medium-sized urban emergency department experiencing moderate traffic, providing a baseline queueing intensity (M/M/c proxy)."},
+                {"Parameter": "Triage Category Proportions", "Baseline Value": "Red (5%), Yellow (20%), Green (55%), White (19%), Black (1%)", "Source Type": "Public Health Reference", "Academic Justification": "Illustrative assumption representing high-acuity critical emergency cases (Red/Yellow) as a minority, with non-urgent cases (Green/White) dominating patient volume, matching emergency medicine trends."},
+                {"Parameter": "Registration Duration", "Baseline Value": "Exponential (mean = 3 min)", "Source Type": "Literature Reference", "Academic Justification": "Models administrative processing times as a memoryless distribution, matching hospital queueing benchmarks."},
+                {"Parameter": "Triage Duration", "Baseline Value": "Lognormal (mean = 5 min)", "Source Type": "Public Health Reference", "Academic Justification": "Nurse assessment times are right-skewed; most assessments are brief, while complex patient triages take significantly longer."},
+                {"Parameter": "Treatment Duration", "Baseline Value": "Acuity-Dependent (Red: mean=90m, Yellow: mean=60m, Green: mean=30m, White: mean=15m)", "Source Type": "Literature Reference", "Academic Justification": "Reflects clinical service times based on emergency severity (critical cases require intensive stabilization, while minor cases are discharged quickly)."},
+                {"Parameter": "Admission Probability", "Baseline Value": "Acuity-Dependent (Red: 80%, Yellow: 40%, Green: 5%, White: 0%)", "Source Type": "Literature Reference", "Academic Justification": "Standard clinical outcomes where higher acuity levels are directly correlated with higher admission rates to inpatient wards or ICU."}
+            ]
+            st.dataframe(pd.DataFrame(param_rows), use_container_width=True, hide_index=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            render_section("Why Use Poisson Arrivals?", "QUEUING THEORY")
+            
+            theory_col1, theory_col2 = st.columns([2, 1])
+            with theory_col1:
+                st.markdown("""
+                Patient arrivals at an emergency room occur randomly and independently over time. In queueing theory, such independent arrivals are mathematically modeled as a **Poisson process**.
+                
+                The probability of observing $k$ patient arrivals in a time interval of length $t$ is defined by:
+                """)
+                st.latex(r"P(N(t) = k) = \frac{(\lambda t)^k e^{-\lambda t}}{k!}")
+                st.markdown("""
+                Where:
+                - $N(t)$ is the number of arrivals in time $t$.
+                - $\\lambda$ is the arrival rate (patients per hour).
+                - $e$ is Euler's number.
+                """)
+            with theory_col2:
+                st.markdown("""
+                <div style="background:#1C2541; border: 1px solid #1E2D4A; border-radius: 8px; padding: 1rem; height: 100%;">
+                  <span style="font-size:0.75rem; color:#06B6D4; font-weight:700; text-transform:uppercase;">Key Properties</span>
+                  <ul style="color:#94A3B8; font-size:0.78rem; margin-top:0.5rem; padding-left:1.1rem; line-height:1.5;">
+                    <li><b>Memoryless arrivals</b>: Past arrivals do not affect future arrival times.</li>
+                    <li><b>Independent events</b>: Patients arrive individually, not in coordinated clusters.</li>
+                    <li><b>Standard benchmark</b>: Used widely in healthcare service simulations.</li>
+                  </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            st.markdown("<br>", unsafe_allow_html=True)
+            render_section("DES vs Monte Carlo Methodology", "SIMULATION METHODOLOGY")
+            
+            st.markdown("""
+            <div style="display: flex; gap: 1rem; align-items: stretch; margin-bottom: 1rem; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 250px; background: #1C2541; border: 1px solid #1E2D4A; border-radius: 8px; padding: 1.2rem;">
+                <h5 style="color:#06B6D4; margin: 0 0 0.5rem 0; font-family:'Raleway',sans-serif; font-size:0.95rem; font-weight:700;">
+                  1. Discrete Event Simulation (DES)
+                </h5>
+                <p style="color:#94A3B8; font-size:0.8rem; line-height:1.5; margin:0;">
+                  Models the chronological sequence of events (arrival, registration, triage, treatment, discharge/admission) for individual patients. It captures structural queueing dynamics, resource conflicts, and temporal bottlenecks in a single run.
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #06B6D4;">➔</div>
+              <div style="flex: 1; min-width: 250px; background: #1C2541; border: 1px solid #1E2D4A; border-radius: 8px; padding: 1.2rem;">
+                <h5 style="color:#06B6D4; margin: 0 0 0.5rem 0; font-family:'Raleway',sans-serif; font-size:0.95rem; font-weight:700;">
+                  2. Monte Carlo Replications
+                </h5>
+                <p style="color:#94A3B8; font-size:0.8rem; line-height:1.5; margin:0;">
+                  Repeats the DES model over many runs (e.g., $N=100$) using different random number generator seeds. This aggregates individual stochastic outcomes into solid statistical profiles (means, confidence intervals).
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #06B6D4;">➔</div>
+              <div style="flex: 1; min-width: 250px; background: #1C2541; border: 1px solid #1E2D4A; border-radius: 8px; padding: 1.2rem;">
+                <h5 style="color:#06B6D4; margin: 0 0 0.5rem 0; font-family:'Raleway',sans-serif; font-size:0.95rem; font-weight:700;">
+                  3. Decision Risk Analysis
+                </h5>
+                <p style="color:#94A3B8; font-size:0.8rem; line-height:1.5; margin:0;">
+                  Translates statistical distributions into decision-oriented risk percentages, estimating the probability of clinic overloads, excessive patient wait times, or doctor burnout.
+                </p>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+

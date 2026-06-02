@@ -42,6 +42,7 @@ class IGDSimulation:
         self.stage_counts["registration"] += 1
         with self.registration.request() as req:
             yield req
+            patient.registration_start = self.env.now
             yield self.env.timeout(registration_time())
             patient.registration_end = self.env.now
         self.stage_counts["registration"] -= 1
@@ -50,6 +51,7 @@ class IGDSimulation:
         self.stage_counts["triage"] += 1
         with self.triage.request() as req:
             yield req
+            patient.triage_start = self.env.now
             yield self.env.timeout(triage_time())
             patient.triage_end = self.env.now
         self.stage_counts["triage"] -= 1
