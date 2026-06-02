@@ -1038,15 +1038,15 @@ with tab_mc:
             """)
             
         with doc_sec_2:
-            render_section("Parameter Sources & Justifications", "PARAMETERS")
+            render_section("Parameter Sources", "PARAMETERS")
             
             param_rows = [
-                {"Parameter": "Arrival Rate (λ)", "Baseline Value": "20 pts/hr", "Source Type": "Literature & Public Health Reference", "Academic Justification": "Representative of a medium-sized urban emergency department experiencing moderate traffic, providing a baseline queueing intensity (M/M/c proxy)."},
-                {"Parameter": "Triage Category Proportions", "Baseline Value": "Red (5%), Yellow (20%), Green (55%), White (19%), Black (1%)", "Source Type": "Public Health Reference", "Academic Justification": "Illustrative assumption representing high-acuity critical emergency cases (Red/Yellow) as a minority, with non-urgent cases (Green/White) dominating patient volume, matching emergency medicine trends."},
-                {"Parameter": "Registration Duration", "Baseline Value": "Exponential (mean = 3 min)", "Source Type": "Literature Reference", "Academic Justification": "Models administrative processing times as a memoryless distribution, matching hospital queueing benchmarks."},
-                {"Parameter": "Triage Duration", "Baseline Value": "Lognormal (mean = 5 min)", "Source Type": "Public Health Reference", "Academic Justification": "Nurse assessment times are right-skewed; most assessments are brief, while complex patient triages take significantly longer."},
-                {"Parameter": "Treatment Duration", "Baseline Value": "Acuity-Dependent (Red: mean=90m, Yellow: mean=60m, Green: mean=30m, White: mean=15m)", "Source Type": "Literature Reference", "Academic Justification": "Reflects clinical service times based on emergency severity (critical cases require intensive stabilization, while minor cases are discharged quickly)."},
-                {"Parameter": "Admission Probability", "Baseline Value": "Acuity-Dependent (Red: 80%, Yellow: 40%, Green: 5%, White: 0%)", "Source Type": "Literature Reference", "Academic Justification": "Standard clinical outcomes where higher acuity levels are directly correlated with higher admission rates to inpatient wards or ICU."}
+                {"Parameter": "Arrival Rate (λ)", "Baseline Value": "20 pts/hr", "Source Type": "Literature & Public Health Reference"},
+                {"Parameter": "Triage Category Proportions", "Baseline Value": "Red (5%), Yellow (20%), Green (55%), White (19%), Black (1%)", "Source Type": "Public Health Reference"},
+                {"Parameter": "Registration Duration", "Baseline Value": "Exponential (mean = 3 min)", "Source Type": "Literature Reference"},
+                {"Parameter": "Triage Duration", "Baseline Value": "Lognormal (mean = 5 min)", "Source Type": "Public Health Reference"},
+                {"Parameter": "Treatment Duration", "Baseline Value": "Acuity-Dependent (Red: mean=90m, Yellow: mean=60m, Green: mean=30m, White: mean=15m)", "Source Type": "Literature Reference"},
+                {"Parameter": "Admission Probability", "Baseline Value": "Acuity-Dependent (Red: 80%, Yellow: 40%, Green: 5%, White: 0%)", "Source Type": "Literature Reference"}
             ]
             st.dataframe(pd.DataFrame(param_rows), use_container_width=True, hide_index=True)
             

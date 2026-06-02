@@ -329,6 +329,23 @@ const SL={
 let pts=[],docs=[],t=0,state='Not Started';
 let run=false,tmr=null,sp=3;
 
+// Clean up any stale background timers from previous iframe execution contexts
+if (window.__activeTimer__) {
+  clearInterval(window.__activeTimer__);
+  window.__activeTimer__ = null;
+}
+
+function clearActiveTimer() {
+  if (tmr) {
+    clearInterval(tmr);
+    tmr = null;
+  }
+  if (window.__activeTimer__) {
+    clearInterval(window.__activeTimer__);
+    window.__activeTimer__ = null;
+  }
+}
+
 function fmt(n){return Math.round(n);}
 
 function initDocs(){
@@ -605,7 +622,7 @@ function updateFrame() {
 function tick(){
   if (t >= DURATION) {
     if (state === 'Running') {
-      clearInterval(tmr);
+      clearActiveTimer();
       updateState('Completed');
       lg('Simulation completed (' + DURATION + 'm reached).');
     }
@@ -618,17 +635,18 @@ function tick(){
 
 function tog(){
   if (state === 'Running') {
-    clearInterval(tmr);
+    clearActiveTimer();
     updateState('Paused');
   } else if (state === 'Not Started' || state === 'Paused') {
     const iv = Math.max(50, 400 / sp);
     tmr = setInterval(tick, iv);
+    window.__activeTimer__ = tmr;
     updateState('Running');
   }
 }
 
 function rst(){
-  clearInterval(tmr);
+  clearActiveTimer();
   t = 0;
   loggedEvents = {};
   updateState('Not Started');
@@ -644,8 +662,9 @@ function setSp(v){
   document.getElementById('spv')
     .textContent=v+'×';
   if(state === 'Running'){
-    clearInterval(tmr);
+    clearActiveTimer();
     tmr=setInterval(tick,Math.max(50,400/sp));
+    window.__activeTimer__ = tmr;
   }
 }
 
@@ -664,16 +683,17 @@ def render_animation(patients_json: str, n_doctors: int, duration: int = 480, he
     html_content = html_content.replace("__PATIENTS_JSON__", patients_json)
     html_content = html_content.replace("__N_DOCTORS__", str(n_doctors))
     
-    # Generate a unique hash based on configuration parameters and patients data
-    # to force Streamlit's React container to completely unmount and remount
-    # the iframe, ensuring a clean context, resetting timers, and avoiding stale/duplicate states.
+    # We embed a unique hash as a comment in the HTML. Since the HTML string content
+    # changes when doctor count or patients change, Streamlit updates the iframe srcdoc.
+    # Stale JavaScript timers from the previous context are cleaned up automatically
+    # by the clearActiveTimer() window check inside the HTML script.
     import hashlib
     config_str = f"{patients_json}_{n_doctors}_{duration}"
     content_hash = hashlib.md5(config_str.encode("utf-8")).hexdigest()
+    html_content = html_content.replace("Ready. Click Start.", f"Ready. Click Start. <!-- run_hash: {content_hash} -->")
     
     components.html(
         html_content,
         height=height,
-        scrolling=False,
-        key=f"anim_iframe_{content_hash}"
+        scrolling=False
     )
