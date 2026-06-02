@@ -2,24 +2,39 @@ import streamlit as st
 
 MEDICAL_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
-/* Force Streamlit app background to Deep Slate */
-.stApp, html, body {
-  background-color: #0B132B !important;
-  color: #F1F5F9 !important;
-  font-family: 'Raleway', sans-serif !important;
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Force sidebar background to even darker slate */
+/* Force Streamlit app background */
+.stApp, html, body {
+  background-color: #0f1418 !important;
+  color: #dee3e8 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Sidebar */
 [data-testid="stSidebar"] {
-  background-color: #080D1A !important;
+  background-color: #1b2024 !important;
 }
 [data-testid="stSidebar"] * {
   color: #FFFFFF !important;
 }
 [data-testid="stSidebar"] label {
-  font-family: 'Raleway', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
   font-size: 0.78rem !important;
   font-weight: 600 !important;
   letter-spacing: 0.04em !important;
@@ -27,8 +42,8 @@ MEDICAL_CSS = """
   color: rgba(255,255,255,0.75) !important;
 }
 [data-testid="stSidebar"] .stSlider [data-testid="stThumbValue"] {
-  background: #06B6D4 !important;
-  color: white !important;
+  background: #8ed5ff !important;
+  color: #00354a !important;
   border-radius: 4px !important;
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 0.75rem !important;
@@ -36,8 +51,8 @@ MEDICAL_CSS = """
 
 /* Titles and Headers */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Raleway', sans-serif !important;
-  color: #F1F5F9 !important;
+  font-family: 'Inter', sans-serif !important;
+  color: #dee3e8 !important;
 }
 
 .main .block-container {
@@ -55,26 +70,28 @@ header[data-testid="stHeader"] {
 
 /* Buttons styling */
 .stButton > button {
-  background: linear-gradient(135deg, #0891B2 0%, #06B6D4 100%) !important;
-  color: white !important;
-  border: none !important;
+  background: #252b2e !important;
+  color: #dee3e8 !important;
+  border: 1px solid #3e484f !important;
   border-radius: 8px !important;
   padding: 0.65rem 1.75rem !important;
-  font-family: 'Raleway', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
   font-size: 0.9rem !important;
-  box-shadow: 0 2px 8px rgba(6,182,212,0.25) !important;
+  box-shadow: none !important;
   transition: all 0.2s ease !important;
   width: 100% !important;
 }
 .stButton > button:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 16px rgba(6,182,212,0.4) !important;
+  background: #303539 !important;
+  border-color: #8ed5ff !important;
+  color: #8ed5ff !important;
+  box-shadow: none !important;
 }
 
 /* Tabs styling */
 .stTabs [data-baseweb="tab-list"] {
-  background: #080D1A !important;
+  background: #1b2024 !important;
   border-radius: 8px !important;
   padding: 4px !important;
   gap: 2px !important;
@@ -83,8 +100,8 @@ header[data-testid="stHeader"] {
 .stTabs [data-baseweb="tab"] {
   background: transparent !important;
   border-radius: 6px !important;
-  color: #94A3B8 !important;
-  font-family: 'Raleway', sans-serif !important;
+  color: #bdc8d1 !important;
+  font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
   font-size: 0.85rem !important;
   padding: 0.4rem 1.2rem !important;
@@ -92,27 +109,27 @@ header[data-testid="stHeader"] {
   transition: all 0.15s ease !important;
 }
 .stTabs [aria-selected="true"] {
-  background: #1C2541 !important;
-  color: #06B6D4 !important;
+  background: #252b2e !important;
+  color: #8ed5ff !important;
   font-weight: 700 !important;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
 }
 
 /* Metric card container */
 [data-testid="metric-container"] {
-  background: #1C2541 !important;
+  background: #252b2e !important;
   border-radius: 10px !important;
   padding: 1rem 1.25rem !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-  border-top: 3px solid #06B6D4 !important;
+  border: 1px solid #3e484f !important;
 }
 [data-testid="metric-container"] label {
   font-size: 0.72rem !important;
   font-weight: 600 !important;
   letter-spacing: 0.07em !important;
   text-transform: uppercase !important;
-  color: #94A3B8 !important;
-  font-family: 'Raleway', sans-serif !important;
+  color: #bdc8d1 !important;
+  font-family: 'Inter', sans-serif !important;
 }
 [data-testid="metric-container"] [data-testid="stMetricValue"] {
   font-family: 'JetBrains Mono', monospace !important;
@@ -125,22 +142,22 @@ header[data-testid="stHeader"] {
 [data-testid="stDataFrame"] {
   border-radius: 10px !important;
   overflow: hidden !important;
-  border: 1px solid #1E2D4A !important;
-  background: #1C2541 !important;
+  border: 1px solid #3e484f !important;
+  background: #252b2e !important;
 }
 
 /* Custom styled lines */
 hr {
   border: none !important;
-  border-top: 1.5px solid #1E2D4A !important;
+  border-top: 1.5px solid #3e484f !important;
   margin: 1.25rem 0 !important;
 }
 
 /* Scrollbar customization */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0B132B; }
+::-webkit-scrollbar-track { background: #0f1418; }
 ::-webkit-scrollbar-thumb {
-  background: #1C2541;
+  background: #303539;
   border-radius: 3px;
 }
 </style>
@@ -152,58 +169,21 @@ def inject_css():
 
 def render_header():
     st.markdown("""
-<div style="background:linear-gradient(135deg, #080D1A 0%, #1C2541 100%);
-  border:1px solid #1E2D4A;
-  border-radius:16px;padding:2rem 2.5rem;
-  margin-bottom:1.75rem;position:relative;
-  overflow:hidden;">
-  <h1 style="font-family:'Raleway',sans-serif;
-    font-size:1.9rem;font-weight:700;color:white;
-    margin:0 0 0.35rem 0;line-height:1.2;">
-    IGD Queue Optimization
-  </h1>
-  <p style="color:#94A3B8;
-    font-size:0.88rem;margin:0;font-weight:400;font-family:'Inter',sans-serif;">
-    Emergency Room Discrete Event Simulation
-    — Triage-Based Patient Flow Analysis
-  </p>
-  <div style="display:flex;gap:0.5rem;
-    margin-top:1rem;flex-wrap:wrap;">
-    <span style="background:rgba(6,182,212,0.12);
-      border:1px solid rgba(6,182,212,0.25);
-      color:#06B6D4;font-size:0.72rem;
-      font-weight:600;letter-spacing:0.06em;
-      text-transform:uppercase;padding:0.28rem 0.75rem;
-      border-radius:20px;
-      font-family:'JetBrains Mono',monospace;">
-      SimPy DES
+<div style="border-bottom:1px solid #3e484f;padding-bottom:1.25rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+  <div>
+    <h1 style="font-family:'Inter',sans-serif;font-size:1.75rem;font-weight:700;color:#dee3e8;margin:0 0 0.25rem 0;line-height:1.2;letter-spacing:-0.02em;">
+      Emergency Room Throughput Analysis
+    </h1>
+    <p style="color:#bdc8d1;font-size:0.85rem;margin:0;font-weight:400;font-family:'Inter',sans-serif;">
+      Discrete Event Simulation (DES) — Performance Monitoring for Optimized Patient Flow
+    </p>
+  </div>
+  <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+    <span style="background:#303539;border:1px solid #3e484f;color:#8ed5ff;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:0.25rem 0.65rem;border-radius:20px;font-family:'JetBrains Mono',monospace;">
+      SimPy DES Engine
     </span>
-    <span style="background:rgba(6,182,212,0.12);
-      border:1px solid rgba(6,182,212,0.25);
-      color:#06B6D4;font-size:0.72rem;
-      font-weight:600;letter-spacing:0.06em;
-      text-transform:uppercase;padding:0.28rem 0.75rem;
-      border-radius:20px;
-      font-family:'JetBrains Mono',monospace;">
-      M/M/1 → M/M/s → M/M/c
-    </span>
-    <span style="background:rgba(6,182,212,0.12);
-      border:1px solid rgba(6,182,212,0.25);
-      color:#06B6D4;font-size:0.72rem;
-      font-weight:600;letter-spacing:0.06em;
-      text-transform:uppercase;padding:0.28rem 0.75rem;
-      border-radius:20px;
-      font-family:'JetBrains Mono',monospace;">
+    <span style="background:#303539;border:1px solid #3e484f;color:#ffc176;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:0.25rem 0.65rem;border-radius:20px;font-family:'JetBrains Mono',monospace;">
       Monte Carlo N=100
-    </span>
-    <span style="background:rgba(6,182,212,0.12);
-      border:1px solid rgba(6,182,212,0.25);
-      color:#06B6D4;font-size:0.72rem;
-      font-weight:600;letter-spacing:0.06em;
-      text-transform:uppercase;padding:0.28rem 0.75rem;
-      border-radius:20px;
-      font-family:'JetBrains Mono',monospace;">
-      Kemenkes Standard
     </span>
   </div>
 </div>""", unsafe_allow_html=True)
@@ -212,21 +192,21 @@ def render_header():
 def render_section(title: str, tag: str = ""):
     tag_html = (
         f'<span style="margin-left:auto;'
-        f'background:#1C2541;color:#06B6D4;'
+        f'background:#303539;color:#8ed5ff;'
         f'font-size:10px;font-weight:600;'
         f'letter-spacing:.05em;text-transform:uppercase;'
         f'padding:3px 8px;border-radius:4px;'
-        f'font-family:\'JetBrains Mono\',monospace;border:1px solid #1E2D4A;">{tag}</span>'
+        f'font-family:\'JetBrains Mono\',monospace;border:1px solid #3e484f;">{tag}</span>'
         if tag else "")
     st.markdown(
         f'<div style="display:flex;align-items:center;'
         f'gap:10px;margin:20px 0 12px;padding-bottom:8px;'
-        f'border-bottom:1.5px solid #1E2D4A;">'
+        f'border-bottom:1.5px solid #3e484f;">'
         f'<div style="width:8px;height:8px;'
-        f'border-radius:50%;background:#06B6D4;'
+        f'border-radius:50%;background:#8ed5ff;'
         f'flex-shrink:0"></div>'
         f'<span style="font-size:15px;font-weight:700;'
-        f'color:#F1F5F9;font-family:\'Raleway\',sans-serif">'
+        f'color:#dee3e8;font-family:\'Inter\',sans-serif">'
         f'{title}</span>'
         f'{tag_html}</div>',
         unsafe_allow_html=True)
@@ -234,10 +214,10 @@ def render_section(title: str, tag: str = ""):
 
 def render_info(text: str, kind: str = "info"):
     palette = {
-        "info":    ("#132238", "#93C5FD", "#3B82F6"),
-        "warn":    ("#2B2211", "#FDE047", "#EAB308"),
-        "success": ("#0C2B1B", "#86EFAC", "#22C55E"),
-        "danger":  ("#371318", "#FCA5A5", "#EF4444"),
+        "info":    ("#1b2024", "#8ed5ff", "#38bdf8"),
+        "warn":    ("#2b2211", "#ffc176", "#f1a02b"),
+        "success": ("#0C2B1B", "#4ade80", "#22C55E"),
+        "danger":  ("#371318", "#f87171", "#ef4444"),
     }
     bg, tc, bc = palette.get(kind, palette["info"])
     st.markdown(
@@ -256,33 +236,33 @@ def render_priority_legend():
 <div style="display:flex;gap:8px;flex-wrap:wrap;
   margin:6px 0 14px 0;">
   <div style="display:flex;align-items:center;gap:5px;
-    font-size:12px;color:#94A3B8;font-family:'Inter',sans-serif;">
+    font-size:12px;color:#bdc8d1;font-family:'Inter',sans-serif;">
     <div style="width:12px;height:12px;border-radius:50%;
-      background:#f7c1c1;border:1.5px solid #e24b4a">
+      background:#f87171;border:1.5px solid #ef4444">
     </div>Red – critical
   </div>
   <div style="display:flex;align-items:center;gap:5px;
-    font-size:12px;color:#94A3B8;font-family:'Inter',sans-serif;">
+    font-size:12px;color:#bdc8d1;font-family:'Inter',sans-serif;">
     <div style="width:12px;height:12px;border-radius:50%;
-      background:#fac775;border:1.5px solid #ba7517">
+      background:#ffc176;border:1.5px solid #f1a02b">
     </div>Yellow – emergency
   </div>
   <div style="display:flex;align-items:center;gap:5px;
-    font-size:12px;color:#94A3B8;font-family:'Inter',sans-serif;">
+    font-size:12px;color:#bdc8d1;font-family:'Inter',sans-serif;">
     <div style="width:12px;height:12px;border-radius:50%;
-      background:#c0dd97;border:1.5px solid #639922">
+      background:#4ade80;border:1.5px solid #22c55e">
     </div>Green – urgent
   </div>
   <div style="display:flex;align-items:center;gap:5px;
-    font-size:12px;color:#94A3B8;font-family:'Inter',sans-serif;">
+    font-size:12px;color:#bdc8d1;font-family:'Inter',sans-serif;">
     <div style="width:12px;height:12px;border-radius:50%;
-      background:#2A3547;border:1.5px solid #95A5A6">
+      background:#303539;border:1.5px solid #bdc8d1">
     </div>White – non-urgent
   </div>
   <div style="display:flex;align-items:center;gap:5px;
-    font-size:12px;color:#94A3B8;font-family:'Inter',sans-serif;">
+    font-size:12px;color:#bdc8d1;font-family:'Inter',sans-serif;">
     <div style="width:12px;height:12px;border-radius:50%;
-      background:#1C2541;border:1.5px solid #475569">
+      background:#1b2024;border:1.5px solid #3e484f">
     </div>Black – DOA
   </div>
 </div>""", unsafe_allow_html=True)
@@ -290,28 +270,27 @@ def render_priority_legend():
 
 def render_risk_card(label: str, probability: float, description: str):
     if probability < 10.0:
-        color = "#10B981" # Emerald Green
+        color = "#4ade80"
         bg = "#0C2B1B"
-        border = "rgba(16, 185, 129, 0.2)"
+        border = "rgba(74, 222, 128, 0.2)"
         status = "Low Risk"
     elif probability < 40.0:
-        color = "#F59E0B" # Amber Yellow
+        color = "#ffc176"
         bg = "#2B2211"
-        border = "rgba(245, 158, 11, 0.2)"
+        border = "rgba(255, 193, 118, 0.2)"
         status = "Moderate Risk"
     else:
-        color = "#EF4444" # Crimson Red
+        color = "#f87171"
         bg = "#371318"
-        border = "rgba(239, 68, 68, 0.2)"
+        border = "rgba(248, 113, 113, 0.2)"
         status = "High Risk"
         
     card_html = f"""
     <div style="background:{bg}; border: 1px solid {border}; border-top: 4px solid {color}; border-radius: 8px; padding: 1.2rem; min-height: 140px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 12px;">
-      <div style="font-size: 0.72rem; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">{label}</div>
+      <div style="font-size: 0.72rem; color: #bdc8d1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">{label}</div>
       <div style="font-size: 2.2rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 0.2rem;">{probability:.1f}%</div>
       <div style="font-size: 0.78rem; font-weight: 600; color: {color}; margin-bottom: 0.5rem;">{status}</div>
-      <div style="font-size: 0.75rem; color: #94A3B8; line-height: 1.4;">{description}</div>
+      <div style="font-size: 0.75rem; color: #bdc8d1; line-height: 1.4;">{description}</div>
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
-

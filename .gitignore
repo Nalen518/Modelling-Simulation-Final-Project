@@ -5,3 +5,7 @@ data/results/*.json
 .DS_Store
 venv/
 *.egg-info/
+bug_report.md
+bugreport.md
+walkthrough.md
+walktrough.md

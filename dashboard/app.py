@@ -27,74 +27,76 @@ inject_css()
 
 PLOTLY_LAYOUT = dict(
     font_family="Inter, sans-serif",
-    font_color="#E2E8F0",
+    font_color="#dee3e8",
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     margin=dict(t=44, b=32, l=16, r=16),
     legend=dict(
-        bgcolor="rgba(28, 37, 65, 0.95)",
-        bordercolor="#3A506B",
+        bgcolor="rgba(27,32,36,0.95)",
+        bordercolor="#3e484f",
         borderwidth=1,
         font_size=11,
     ),
     xaxis=dict(
-        gridcolor="rgba(255, 255, 255, 0.06)",
-        linecolor="#3A506B",
+        gridcolor="rgba(255,255,255,0.05)",
+        linecolor="#3e484f",
         tickfont_size=11,
         title_font_size=12,
+        zeroline=False,
     ),
     yaxis=dict(
-        gridcolor="rgba(255, 255, 255, 0.06)",
-        linecolor="#3A506B",
+        gridcolor="rgba(255,255,255,0.05)",
+        linecolor="#3e484f",
         tickfont_size=11,
         title_font_size=12,
+        zeroline=False,
     ),
 )
 
 PRIORITY_COLORS = {
-    1: "#C0392B", 2: "#B7950B",
-    3: "#1A7A4A", 4: "#95A5A6", 5: "#2C3E50"
+    1: "#f87171", 2: "#ffc176",
+    3: "#4ade80", 4: "#bdc8d1", 5: "#303539"
 }
 PRIORITY_NAMES = {
     1: "Red", 2: "Yellow",
     3: "Green", 4: "White", 5: "Black"
 }
-GRAY = "#95A5A6"
+GRAY = "#bdc8d1"
 
 # ── SIDEBAR ───────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-<div style="padding:1.2rem 0 0.4rem;
-  text-align:center;">
-  <div style="font-size:2rem;">🏥</div>
-  <div style="font-family:DM Sans,sans-serif;
-    font-size:1.05rem;font-weight:700;
-    color:white;margin-top:.3rem;">
-    IGD Simulation
+<div style="margin-bottom:1.25rem;">
+  <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.25rem;">
+    <span class="material-symbols-outlined" style="color:#8ed5ff;font-size:1.4rem;">medical_services</span>
+    <div>
+      <h2 style="font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:700;color:#dee3e8;margin:0;line-height:1.1;">Simulation Controls</h2>
+      <p style="font-family:'Inter',sans-serif;font-size:0.72rem;color:#bdc8d1;margin:0;opacity:0.7;line-height:1.1;">Parameter Configuration</p>
+    </div>
   </div>
 </div>
-<hr style="border-color:rgba(255,255,255,.12);
-  margin:.5rem 0 1rem;">
+<hr style="border-color:#3e484f;
+  margin:.5rem 0 .9rem;">
 """, unsafe_allow_html=True)
 
     st.markdown(
         '<p style="font-size:.68rem;font-weight:700;'
         'letter-spacing:.10em;text-transform:uppercase;'
-        'color:rgba(255,255,255,.50);'
-        'margin-bottom:.5rem;">Patient Arrivals</p>',
+        'color:#8ed5ff;'
+        'margin-bottom:.5rem;">Patient Arrival</p>',
         unsafe_allow_html=True)
     lam = st.slider(
         "Arrival Rate (λ) pts/hr", 1, 50, 20)
 
     st.markdown(
-        '<hr style="border-color:rgba(255,255,255,.10);'
+        '<hr style="border-color:#3e484f;'
         'margin:.9rem 0;">',
         unsafe_allow_html=True)
 
     st.markdown(
         '<p style="font-size:.68rem;font-weight:700;'
         'letter-spacing:.10em;text-transform:uppercase;'
-        'color:rgba(255,255,255,.50);'
+        'color:#8ed5ff;'
         'margin-bottom:.5rem;">Staffing</p>',
         unsafe_allow_html=True)
     n_doctors = st.slider("Doctors (c)", 1, 10, 3)
@@ -103,65 +105,47 @@ with st.sidebar:
         "Registration Officers", 1, 3, 1)
 
     st.markdown(
-        '<hr style="border-color:rgba(255,255,255,.10);'
+        '<hr style="border-color:#3e484f;'
         'margin:.9rem 0;">',
         unsafe_allow_html=True)
 
     st.markdown(
         '<p style="font-size:.68rem;font-weight:700;'
         'letter-spacing:.10em;text-transform:uppercase;'
-        'color:rgba(255,255,255,.50);'
+        'color:#8ed5ff;'
         'margin-bottom:.5rem;">Simulation</p>',
         unsafe_allow_html=True)
     duration = st.slider(
         "Duration (minutes)", 60, 1440, 480, step=60)
 
     st.markdown(
-        '<hr style="border-color:rgba(255,255,255,.10);'
+        '<hr style="border-color:#3e484f;'
         'margin:.9rem 0;">',
         unsafe_allow_html=True)
 
     st.markdown(
         '<p style="font-size:.68rem;font-weight:700;'
         'letter-spacing:.10em;text-transform:uppercase;'
-        'color:rgba(255,255,255,.50);'
-        'margin-bottom:.5rem;">'
-        'Triage Distribution</p>',
+        'color:#8ed5ff;'
+        'margin-bottom:.5rem;">Triage Distribution</p>',
         unsafe_allow_html=True)
 
-    with st.expander("Configure Probabilities"):
-        red_p    = st.slider("Red",    0, 20,  5)
-        yellow_p = st.slider("Yellow", 0, 40, 20)
-        green_p  = st.slider("Green",  0, 70, 55)
-        white_p  = st.slider("White",  0, 40, 19)
-        black_p  = st.slider("Black",  0,  5,  1)
-        total_p  = (red_p + yellow_p + green_p
-                    + white_p + black_p)
-        if total_p != 100:
-            st.warning(
-                f"Sum = {total_p}% (need 100%)")
-        else:
-            st.success("Sum = 100%")
+    red_p    = st.slider("🔴 RED — Immediate", 0, 100, 5, help="Emergency / Resuscitation cases")
+    yellow_p = st.slider("🟡 YELLOW — Urgent", 0, 100, 20, help="Urgent cases")
+    green_p  = st.slider("🟢 GREEN — Non-Urgent", 0, 100, 55, help="Stable non-urgent cases")
+    white_p  = st.slider("⚪ WHITE — Minor", 0, 100, 19, help="Minor outpatient cases")
+    black_p  = st.slider("⚫ BLACK — Deceased", 0, 100, 1, help="DOA / Unsalvageable cases")
+    
+    total_p  = (red_p + yellow_p + green_p + white_p + black_p)
+    if total_p != 100:
+        st.error(f"Total Triage: {total_p}% (Must sum to 100%)")
+    else:
+        st.success("Total = 100% | Valid Distribution ✓")
 
     triage_probs = [
         red_p/100, yellow_p/100, green_p/100,
         white_p/100, black_p/100
     ]
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown(
-        f'<div style="background:rgba(255,255,255,.07);'
-        f'border:1px solid rgba(255,255,255,.12);'
-        f'border-radius:8px;padding:.85rem 1rem;'
-        f'font-size:.78rem;'
-        f'color:rgba(255,255,255,.80);'
-        f'font-family:DM Mono,monospace;'
-        f'line-height:1.8;">'
-        f'λ = {lam} pts/hr<br>'
-        f'c = {n_doctors} doctors<br>'
-        f's = {n_nurses} nurses<br>'
-        f'T = {duration} min</div>',
-        unsafe_allow_html=True)
 
 params = {
     "lambda":         lam,
@@ -174,14 +158,6 @@ params = {
 
 # ── MAIN ──────────────────────────────────────────────
 render_header()
-
-render_info(
-    f"<b>Config:</b> λ={lam} pts/hr &nbsp;·&nbsp;"
-    f" {n_doctors} doctors &nbsp;·&nbsp;"
-    f" {n_nurses} nurse(s) &nbsp;·&nbsp;"
-    f" {duration} min &nbsp;·&nbsp;"
-    f" Threshold: <b>Kemenkes 10 min</b>",
-    "info")
 
 import json
 try:
@@ -221,14 +197,7 @@ if SIM_OK:
     ])
 
     with tab_anim:
-        st.markdown("<br>", unsafe_allow_html=True)
-        render_info(
-            "Watch patients move through each IGD stage "
-            "in real time. Use the <b>Speed</b> slider inside the animation "
-            "to adjust live. Hover any patient dot "
-            "to see their details.",
-            "info")
-        render_animation(patients_json, n_doctors, duration=duration, height=680)
+        render_animation(patients_json, n_doctors, duration=duration, height=700)
 
     with tab_sim:
         render_priority_legend()
@@ -309,17 +278,21 @@ if SIM_OK:
                             name=PRIORITY_NAMES[pri],
                             marker_color=
                                 PRIORITY_COLORS[pri],
-                            opacity=0.75,
+                            opacity=0.8,
                             nbinsx=20,
+                            marker_line_width=0,
                         ))
             fig_wait.update_layout(
                 **PLOTLY_LAYOUT,
-                title="Waiting Time Distribution",
+                title=dict(text="Waiting Time Distribution", font=dict(size=14, color="#dee3e8")),
                 xaxis_title="Wait (min)",
                 yaxis_title="Patients",
                 barmode="overlay",
-                height=300,
-                legend_title="Priority",
+                height=320,
+                bargap=0.08,
+            )
+            fig_wait.update_layout(
+                legend_title_text="Priority",
             )
             st.plotly_chart(
                 fig_wait,
@@ -338,7 +311,7 @@ if SIM_OK:
             fig_pie = go.Figure(go.Pie(
                 labels=list(counts.keys()),
                 values=list(counts.values()),
-                hole=0.5,
+                hole=0.55,
                 marker_colors=[
                     PRIORITY_COLORS[k]
                     for k in [1,2,3,4,5]
@@ -347,11 +320,15 @@ if SIM_OK:
                 ],
                 textinfo="label+percent",
                 textfont_size=11,
+                textfont_color="#dee3e8",
+                marker_line_color="#0f1418",
+                marker_line_width=2,
+                pull=[0.03]*len(counts),
             ))
             fig_pie.update_layout(
                 **PLOTLY_LAYOUT,
-                title="Priority Breakdown",
-                height=300,
+                title=dict(text="Priority Breakdown", font=dict(size=14, color="#dee3e8")),
+                height=320,
                 showlegend=False,
             )
             st.plotly_chart(
@@ -376,8 +353,8 @@ if SIM_OK:
                 }
             fig_exit = go.Figure()
             for outcome, color in [
-                ("Discharged","#1A7A4A"),
-                ("Admitted",  "#C0392B"),
+                ("Discharged","#4ade80"),
+                ("Admitted",  "#f87171"),
             ]:
                 fig_exit.add_trace(go.Bar(
                     x=list(exit_data.keys()),
@@ -386,12 +363,14 @@ if SIM_OK:
                     name=outcome,
                     marker_color=color,
                     marker_line_width=0,
+                    marker_line_color="#0f1418",
                 ))
             fig_exit.update_layout(
                 **PLOTLY_LAYOUT,
-                title="Discharge vs Admission",
+                title=dict(text="Discharge vs Admission", font=dict(size=14, color="#dee3e8")),
                 barmode="stack",
-                height=300,
+                height=320,
+                bargap=0.3,
             )
             st.plotly_chart(
                 fig_exit,
@@ -401,29 +380,30 @@ if SIM_OK:
             fig_g = go.Figure(go.Indicator(
                 mode="gauge+number+delta",
                 value=metrics["utilization"],
-                delta={"reference": 75},
-                title={"text": "Doctor Utilization %", "font": {"size": 13, "color": "#F1F5F9", "family": "Raleway, sans-serif"}},
+                delta={"reference": 75, "increasing": {"color": "#4ade80"}, "decreasing": {"color": "#f87171"}},
+                title={"text": "Doctor Utilization %", "font": {"size": 13, "color": "#dee3e8", "family": "Inter, sans-serif"}},
                 gauge={
-                    "axis": {"range": [0, 100], "tickcolor": "#94A3B8"},
-                    "bar": {"color": "#06B6D4", "thickness": 0.25},
+                    "axis": {"range": [0, 100], "tickcolor": "#bdc8d1", "tickfont": {"size": 10, "color": "#bdc8d1"}},
+                    "bar": {"color": "#8ed5ff", "thickness": 0.3},
+                    "bgcolor": "#1b2024",
                     "steps": [
-                        {"range": [0, 60], "color": "#1C2541"},
-                        {"range": [60, 90], "color": "#1B4332"},
-                        {"range": [90, 100], "color": "#4A1525"},
+                        {"range": [0, 60], "color": "#252b2e"},
+                        {"range": [60, 90], "color": "rgba(74,222,128,0.15)"},
+                        {"range": [90, 100], "color": "rgba(248,113,113,0.2)"},
                     ],
                     "threshold": {
-                        "line": {"color": "#EF4444", "width": 2},
+                        "line": {"color": "#f87171", "width": 2},
                         "value": 90
                     },
                 },
-                number={"suffix": "%", "font": {"family": "JetBrains Mono, monospace", "size": 32, "color": "#F1F5F9"}},
+                number={"suffix": "%", "font": {"family": "JetBrains Mono, monospace", "size": 32, "color": "#dee3e8"}},
             ))
             fig_g.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font_family="Inter, sans-serif",
-                font_color="#F1F5F9",
-                height=300,
+                font_color="#dee3e8",
+                height=320,
                 margin=dict(t=44, b=16, l=32, r=32),
             )
             st.plotly_chart(
@@ -1109,7 +1089,15 @@ with tab_mc:
                 <p style="color:#94A3B8; font-size:0.8rem; line-height:1.5; margin:0;">
                   Translates statistical distributions into decision-oriented risk percentages, estimating the probability of clinic overloads, excessive patient wait times, or doctor burnout.
                 </p>
-              </div>
             </div>
             """, unsafe_allow_html=True)
+
+    # Render professional footer
+    st.markdown("""
+    <hr style="border-color:#3e484f;margin:2rem 0 1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;color:#bdc8d1;font-size:0.75rem;font-family:'Inter',sans-serif;opacity:0.7;flex-wrap:wrap;gap:0.5rem;padding-bottom:1rem;">
+      <div>IGD Queue Optimization • Discrete Event Simulation using SimPy</div>
+      <div>Developed for Modeling & Simulation Final Project</div>
+    </div>
+    """, unsafe_allow_html=True)
 

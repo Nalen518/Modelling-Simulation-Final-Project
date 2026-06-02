@@ -2,16 +2,48 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 PRIORITY_COLORS = {
-    1: "#E74C3C",  # Red
-    2: "#F39C12",  # Yellow
-    3: "#27AE60",  # Green
-    4: "#95A5A6",  # White/Gray
-    5: "#1C2833",  # Black
+    1: "#f87171",  # Red
+    2: "#ffc176",  # Yellow
+    3: "#4ade80",  # Green
+    4: "#bdc8d1",  # White/Gray
+    5: "#303539",  # Black
 }
 PRIORITY_NAMES = {
     1: "Red", 2: "Yellow",
     3: "Green", 4: "White", 5: "Black"
 }
+
+# ── Shared dark-mode Plotly layout ──────────────────
+_DARK_LAYOUT = dict(
+    font_family="Inter, sans-serif",
+    font_color="#dee3e8",
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    margin=dict(t=44, b=32, l=16, r=16),
+    legend=dict(
+        bgcolor="rgba(27,32,36,0.95)",
+        bordercolor="#3e484f",
+        borderwidth=1,
+        font_size=11,
+        orientation="h",
+        y=1.12,
+    ),
+    xaxis=dict(
+        gridcolor="rgba(255,255,255,0.05)",
+        linecolor="#3e484f",
+        tickfont_size=11,
+        title_font_size=12,
+        zeroline=False,
+    ),
+    yaxis=dict(
+        gridcolor="rgba(255,255,255,0.05)",
+        linecolor="#3e484f",
+        tickfont_size=11,
+        title_font_size=12,
+        zeroline=False,
+    ),
+)
+
 
 def _get_priority(p):
     """Safely extract priority as plain int."""
@@ -40,16 +72,18 @@ def chart_wait_distribution(patients: list) -> go.Figure:
                 x=pts,
                 name=PRIORITY_NAMES[pri],
                 marker_color=PRIORITY_COLORS[pri],
-                opacity=0.7,
-                nbinsx=20
+                opacity=0.8,
+                nbinsx=20,
+                marker_line_width=0,
             ))
     fig.update_layout(
-        title="Waiting Time Distribution by Priority",
+        **_DARK_LAYOUT,
+        title=dict(text="Waiting Time Distribution by Priority", font=dict(size=14, color="#dee3e8")),
         xaxis_title="Wait Time (minutes)",
         yaxis_title="Patient Count",
         barmode="overlay",
         height=350,
-        legend_title="Priority"
+        bargap=0.08,
     )
     return fig
 
@@ -66,12 +100,20 @@ def chart_priority_breakdown(patients: list) -> go.Figure:
     fig = go.Figure(go.Pie(
         labels=[PRIORITY_NAMES[k] for k in counts],
         values=list(counts.values()),
-        hole=0.4,
-        marker_colors=[PRIORITY_COLORS[k] for k in counts]
+        hole=0.55,
+        marker_colors=[PRIORITY_COLORS[k] for k in counts],
+        textinfo="label+percent",
+        textfont_size=11,
+        textfont_color="#dee3e8",
+        marker_line_color="#0f1418",
+        marker_line_width=2,
+        pull=[0.03]*len(counts),
     ))
     fig.update_layout(
-        title="Patient Priority Breakdown",
-        height=350
+        **_DARK_LAYOUT,
+        title=dict(text="Patient Priority Breakdown", font=dict(size=14, color="#dee3e8")),
+        height=350,
+        showlegend=False,
     )
     return fig
 
@@ -86,19 +128,23 @@ def chart_exit_breakdown(patients: list) -> go.Figure:
             data[pri][ext] += 1
     fig = go.Figure()
     for outcome, color in [
-        ("discharged", "#27AE60"),
-        ("admitted",   "#E74C3C")
+        ("discharged", "#4ade80"),
+        ("admitted",   "#f87171")
     ]:
         fig.add_trace(go.Bar(
             x=[PRIORITY_NAMES[p] for p in [1,2,3,4]],
             y=[data[p][outcome] for p in [1,2,3,4]],
             name=outcome.capitalize(),
-            marker_color=color
+            marker_color=color,
+            marker_line_width=0,
+            marker_line_color="#0f1418",
         ))
     fig.update_layout(
-        title="Discharge vs Admission by Priority",
+        **_DARK_LAYOUT,
+        title=dict(text="Discharge vs Admission by Priority", font=dict(size=14, color="#dee3e8")),
         barmode="stack",
-        height=350
+        height=350,
+        bargap=0.3,
     )
     return fig
 
@@ -113,17 +159,21 @@ def chart_scenario_comparison(
     fig.add_trace(go.Bar(
         x=labels, y=avg_waits,
         name="Avg Wait (min)",
-        marker_color="#2E86C1"
+        marker_color="#8ed5ff",
+        marker_line_width=0,
     ))
     fig.add_trace(go.Bar(
         x=labels, y=utils,
         name="Utilization (%)",
-        marker_color="#E67E22"
+        marker_color="#ffc176",
+        marker_line_width=0,
     ))
     fig.update_layout(
-        title=f"Sensitivity Analysis — varying {param_name}",
+        **_DARK_LAYOUT,
+        title=dict(text=f"Sensitivity Analysis — varying {param_name}", font=dict(size=14, color="#dee3e8")),
         barmode="group",
-        height=380
+        height=380,
+        bargap=0.2,
     )
     return fig
 
@@ -143,28 +193,32 @@ def chart_monte_carlo_risk(
     fig.add_trace(go.Bar(
         x=scenarios, y=p_red,
         name="P(Red wait > 5 min) %",
-        marker_color="#E74C3C"
+        marker_color="#f87171",
+        marker_line_width=0,
     ))
     fig.add_trace(go.Bar(
         x=scenarios, y=p_green,
         name="P(Green wait > 60 min) %",
-        marker_color="#F39C12"
+        marker_color="#ffc176",
+        marker_line_width=0,
     ))
     # 5% threshold line
     fig.add_hline(
         y=5,
         line_dash="dash",
-        line_color="#922B21",
-        annotation_text="5% Red threshold"
+        line_color="#f87171",
+        annotation_text="5% Red threshold",
+        annotation_font_color="#bdc8d1",
     )
     fig.update_layout(
-        title=f"Monte Carlo Risk Analysis "
-              f"— varying {param_label} "
-              f"(N=100 replications)",
+        **_DARK_LAYOUT,
+        title=dict(
+            text=f"Monte Carlo Risk Analysis — varying {param_label} (N=100 replications)",
+            font=dict(size=14, color="#dee3e8")),
         yaxis_title="Probability (%)",
         barmode="group",
         height=400,
-        legend_title="Risk Metric"
+        bargap=0.2,
     )
     return fig
 
@@ -186,7 +240,7 @@ def chart_confidence_interval(
         x=scenarios + scenarios[::-1],
         y=ci_hi + ci_lo[::-1],
         fill="toself",
-        fillcolor="rgba(231,76,60,0.15)",
+        fillcolor="rgba(248,113,113,0.12)",
         line=dict(color="rgba(255,255,255,0)"),
         name="95% CI"
     ))
@@ -194,22 +248,24 @@ def chart_confidence_interval(
     fig.add_trace(go.Scatter(
         x=scenarios, y=means,
         mode="lines+markers",
-        line=dict(color="#E74C3C", width=2),
-        marker=dict(size=8),
+        line=dict(color="#f87171", width=2),
+        marker=dict(size=8, color="#f87171", line=dict(color="#0f1418", width=1)),
         name="Mean Red Wait"
     ))
     # 5-minute threshold
     fig.add_hline(
         y=5,
         line_dash="dash",
-        line_color="#922B21",
-        annotation_text="5 min threshold"
+        line_color="rgba(248,113,113,0.5)",
+        annotation_text="5 min threshold",
+        annotation_font_color="#bdc8d1",
     )
     fig.update_layout(
-        title=f"Red Patient Wait Time — 95% CI "
-              f"(Monte Carlo, N=100) "
-              f"varying {param_label}",
+        **_DARK_LAYOUT,
+        title=dict(
+            text=f"Red Patient Wait Time — 95% CI (Monte Carlo, N=100) varying {param_label}",
+            font=dict(size=14, color="#dee3e8")),
         yaxis_title="Wait Time (minutes)",
-        height=400
+        height=400,
     )
     return fig
