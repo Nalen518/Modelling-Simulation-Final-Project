@@ -65,87 +65,207 @@ GRAY = "#bdc8d1"
 
 # ── SIDEBAR ───────────────────────────────────────────
 with st.sidebar:
+    # ── Header ──
     st.markdown("""
-<div style="margin-bottom:1.25rem;">
-  <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.25rem;">
-    <span class="material-symbols-outlined" style="color:#8ed5ff;font-size:1.4rem;">medical_services</span>
-    <div>
-      <h2 style="font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:700;color:#dee3e8;margin:0;line-height:1.1;">Simulation Controls</h2>
-      <p style="font-family:'Inter',sans-serif;font-size:0.72rem;color:#bdc8d1;margin:0;opacity:0.7;line-height:1.1;">Parameter Configuration</p>
-    </div>
-  </div>
-</div>
-<hr style="border-color:#3e484f;
-  margin:.5rem 0 .9rem;">
-""", unsafe_allow_html=True)
+<div style="display:flex;justify-content:space-between;align-items:center;
+  padding-bottom:0.85rem;border-bottom:1px solid #3e484f;">
+  <span style="font-family:'Inter',sans-serif;font-size:0.88rem;
+    font-weight:700;color:#dee3e8;letter-spacing:0.05em;">
+    SIMULATION CONTROLS</span>
+  <span class="material-symbols-outlined"
+    style="color:#bdc8d1;font-size:1.2rem;opacity:0.5;">settings</span>
+</div>""", unsafe_allow_html=True)
 
+    # ── PATIENT ARRIVAL ──────────────────────────────
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:0.45rem;margin:1rem 0 0.6rem;">
+  <span style="font-size:0.82rem;">👥</span>
+  <span style="font-family:'Inter',sans-serif;font-size:0.68rem;
+    font-weight:700;letter-spacing:.10em;color:#8ed5ff;">PATIENT ARRIVAL</span>
+</div>""", unsafe_allow_html=True)
+
+    _v = st.session_state.get("s_lam", 20)
     st.markdown(
-        '<p style="font-size:.68rem;font-weight:700;'
-        'letter-spacing:.10em;text-transform:uppercase;'
-        'color:#8ed5ff;'
-        'margin-bottom:.5rem;">Patient Arrival</p>',
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Arrival Rate (λ)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#8ed5ff;">{_v} pts/hr</span></div>',
         unsafe_allow_html=True)
-    lam = st.slider(
-        "Arrival Rate (λ) pts/hr", 1, 50, 20)
+    lam = st.slider("Arrival Rate", 1, 50, 20,
+                     key="s_lam", label_visibility="collapsed")
+    st.caption("Average patients arriving per hour")
 
+    st.markdown('<hr style="border-color:#3e484f;margin:.6rem 0;">',
+                unsafe_allow_html=True)
+
+    # ── STAFFING ─────────────────────────────────────
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:0.45rem;margin-bottom:0.6rem;">
+  <span style="font-size:0.82rem;">🩺</span>
+  <span style="font-family:'Inter',sans-serif;font-size:0.68rem;
+    font-weight:700;letter-spacing:.10em;color:#8ed5ff;">STAFFING</span>
+</div>""", unsafe_allow_html=True)
+
+    _v = st.session_state.get("s_doc", 3)
     st.markdown(
-        '<hr style="border-color:#3e484f;'
-        'margin:.9rem 0;">',
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Doctors (c)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#4ade80;">{_v}</span></div>',
         unsafe_allow_html=True)
+    n_doctors = st.slider("Doctors", 1, 10, 3,
+                          key="s_doc", label_visibility="collapsed")
 
+    _v = st.session_state.get("s_nur", 1)
     st.markdown(
-        '<p style="font-size:.68rem;font-weight:700;'
-        'letter-spacing:.10em;text-transform:uppercase;'
-        'color:#8ed5ff;'
-        'margin-bottom:.5rem;">Staffing</p>',
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Triage Nurses (s)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#4ade80;">{_v}</span></div>',
         unsafe_allow_html=True)
-    n_doctors = st.slider("Doctors (c)", 1, 10, 3)
-    n_nurses  = st.slider("Triage Nurses (s)", 1, 5, 1)
-    n_reg     = st.slider(
-        "Registration Officers", 1, 3, 1)
+    n_nurses = st.slider("Triage Nurses", 1, 5, 1,
+                         key="s_nur", label_visibility="collapsed")
 
+    _v = st.session_state.get("s_reg", 1)
     st.markdown(
-        '<hr style="border-color:#3e484f;'
-        'margin:.9rem 0;">',
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Registration Officers</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#4ade80;">{_v}</span></div>',
         unsafe_allow_html=True)
+    n_reg = st.slider("Registration", 1, 3, 1,
+                      key="s_reg", label_visibility="collapsed")
 
+    st.markdown('<hr style="border-color:#3e484f;margin:.6rem 0;">',
+                unsafe_allow_html=True)
+
+    # ── SIMULATION ───────────────────────────────────
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:0.45rem;margin-bottom:0.6rem;">
+  <span style="font-size:0.82rem;">⏱️</span>
+  <span style="font-family:'Inter',sans-serif;font-size:0.68rem;
+    font-weight:700;letter-spacing:.10em;color:#8ed5ff;">SIMULATION</span>
+</div>""", unsafe_allow_html=True)
+
+    _v = st.session_state.get("s_dur", 480)
     st.markdown(
-        '<p style="font-size:.68rem;font-weight:700;'
-        'letter-spacing:.10em;text-transform:uppercase;'
-        'color:#8ed5ff;'
-        'margin-bottom:.5rem;">Simulation</p>',
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Duration</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#c4b5fd;">{_v} min</span></div>',
         unsafe_allow_html=True)
-    duration = st.slider(
-        "Duration (minutes)", 60, 1440, 480, step=60)
+    duration = st.slider("Duration", 60, 1440, 480, step=60,
+                         key="s_dur", label_visibility="collapsed")
+    st.caption("Total simulation time")
 
+    st.markdown('<hr style="border-color:#3e484f;margin:.6rem 0;">',
+                unsafe_allow_html=True)
+
+    # ── TRIAGE DISTRIBUTION ──────────────────────────
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:0.45rem;margin-bottom:0.6rem;">
+  <span style="font-size:0.82rem;">🏥</span>
+  <span style="font-family:'Inter',sans-serif;font-size:0.68rem;
+    font-weight:700;letter-spacing:.10em;color:#8ed5ff;">TRIAGE DISTRIBUTION</span>
+  <span style="margin-left:auto;font-size:.85rem;color:#bdc8d1;opacity:.5;
+    cursor:help;" title="Probabilities must sum to 100%. Values auto-normalize.">ⓘ</span>
+</div>""", unsafe_allow_html=True)
+
+    _v = st.session_state.get("s_red", 5)
     st.markdown(
-        '<hr style="border-color:#3e484f;'
-        'margin:.9rem 0;">',
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Red (Emergency)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#f87171;">{_v} %</span></div>',
         unsafe_allow_html=True)
+    red_p = st.slider("Red", 0, 100, 5,
+                      key="s_red", label_visibility="collapsed")
 
+    _v = st.session_state.get("s_yel", 20)
     st.markdown(
-        '<p style="font-size:.68rem;font-weight:700;'
-        'letter-spacing:.10em;text-transform:uppercase;'
-        'color:#8ed5ff;'
-        'margin-bottom:.5rem;">Triage Distribution</p>',
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Yellow (Urgent)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#ffc176;">{_v} %</span></div>',
         unsafe_allow_html=True)
+    yellow_p = st.slider("Yellow", 0, 100, 20,
+                         key="s_yel", label_visibility="collapsed")
 
-    red_p    = st.slider("🔴 RED — Immediate", 0, 100, 5, help="Emergency / Resuscitation cases")
-    yellow_p = st.slider("🟡 YELLOW — Urgent", 0, 100, 20, help="Urgent cases")
-    green_p  = st.slider("🟢 GREEN — Non-Urgent", 0, 100, 55, help="Stable non-urgent cases")
-    white_p  = st.slider("⚪ WHITE — Minor", 0, 100, 19, help="Minor outpatient cases")
-    black_p  = st.slider("⚫ BLACK — Deceased", 0, 100, 1, help="DOA / Unsalvageable cases")
-    
-    total_p  = (red_p + yellow_p + green_p + white_p + black_p)
+    _v = st.session_state.get("s_grn", 55)
+    st.markdown(
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Green (Non-Urgent)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#4ade80;">{_v} %</span></div>',
+        unsafe_allow_html=True)
+    green_p = st.slider("Green", 0, 100, 55,
+                        key="s_grn", label_visibility="collapsed")
+
+    _v = st.session_state.get("s_wht", 19)
+    st.markdown(
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'White (Minor)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#bdc8d1;">{_v} %</span></div>',
+        unsafe_allow_html=True)
+    white_p = st.slider("White", 0, 100, 19,
+                        key="s_wht", label_visibility="collapsed")
+
+    _v = st.session_state.get("s_blk", 1)
+    st.markdown(
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:baseline;margin-bottom:2px;">'
+        f'<span style="font-size:.82rem;font-weight:500;color:#dee3e8;">'
+        f'Black (DOA)</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:.88rem;'
+        f'font-weight:700;color:#8a99ad;">{_v} %</span></div>',
+        unsafe_allow_html=True)
+    black_p = st.slider("Black", 0, 100, 1,
+                        key="s_blk", label_visibility="collapsed")
+
+    total_p = red_p + yellow_p + green_p + white_p + black_p
     if total_p != 100:
-        st.error(f"Total Triage: {total_p}% (Must sum to 100%)")
+        st.error(f"⚠️ Total: {total_p}% — Must equal 100%")
     else:
-        st.success("Total = 100% | Valid Distribution ✓")
+        st.success("✓ Total = 100%")
 
     triage_probs = [
-        red_p/100, yellow_p/100, green_p/100,
-        white_p/100, black_p/100
+        red_p / 100, yellow_p / 100, green_p / 100,
+        white_p / 100, black_p / 100
     ]
+
+    # ── Buttons ──────────────────────────────────────
+    st.markdown('<div style="margin-top:.8rem;"></div>',
+                unsafe_allow_html=True)
+    st.button("▶  Run Simulation", type="primary",
+              use_container_width=True)
+    st.caption("ℹ️ Simulation auto-updates on parameter change")
+
+    _rc1, _rc2, _rc3 = st.columns([1, 2, 1])
+    with _rc2:
+        if st.button("↻ Reset All", use_container_width=True):
+            for _k in list(st.session_state.keys()):
+                if _k.startswith("s_"):
+                    del st.session_state[_k]
+            st.rerun()
 
 params = {
     "lambda":         lam,
@@ -157,7 +277,7 @@ params = {
 }
 
 # ── MAIN ──────────────────────────────────────────────
-render_header()
+render_header(params)
 
 import json
 try:
@@ -200,14 +320,13 @@ if SIM_OK:
         render_animation(patients_json, n_doctors, duration=duration, height=700)
 
     with tab_sim:
-        render_priority_legend()
 
         # ── KPI — native st.metric() ──────────
         render_section(
             "Key Performance Indicators",
             "RESULTS")
-        c1,c2,c3,c4,c5,c6 = st.columns(
-            6, gap="small")
+        c1,c2,c3 = st.columns(
+            3, gap="small")
         c1.metric(
             "Total Patients",
             metrics["total"])
@@ -215,8 +334,10 @@ if SIM_OK:
             "Treated",
             metrics["completed"])
         c3.metric(
-            "Avg Wait",
+            "Avg Queue Wait",
             f"{metrics['avg_wait']} min")
+        c4,c5,c6 = st.columns(
+            3, gap="small")
         c4.metric(
             "Max Wait",
             f"{metrics['max_wait']} min")
@@ -245,7 +366,7 @@ if SIM_OK:
                     pp["in_progress"],
                 "Still Queuing":
                     pp["still_queuing"],
-                "Avg Wait (min)":
+                "Avg Queue Wait (min)":
                     f"{pp['avg_wait']:.1f}",
                 "Max Wait (min)":
                     f"{pp['max_wait']:.1f}",
@@ -285,7 +406,7 @@ if SIM_OK:
             fig_wait.update_layout(
                 **PLOTLY_LAYOUT,
                 title=dict(text="Waiting Time Distribution", font=dict(size=14, color="#dee3e8")),
-                xaxis_title="Wait (min)",
+                xaxis_title="Queue Wait (min)",
                 yaxis_title="Patients",
                 barmode="overlay",
                 height=320,
@@ -485,7 +606,7 @@ with tab_sa:
                 scen_results.append({
                     "Scenario": f"Scenario {chr(65 + c - 2)} ({c} Docs)",
                     "Doctors": c,
-                    "Average Wait (min)": m["avg_wait"],
+                    "Avg Queue Wait (min)": m["avg_wait"],
                     "Max Wait (min)": m["max_wait"],
                     "Max Queue": m["max_queue"],
                     "Utilization (%)": m["utilization"],
@@ -501,8 +622,8 @@ with tab_sa:
             fig_scen = go.Figure()
             fig_scen.add_trace(go.Bar(
                 x=df_scen["Scenario"],
-                y=df_scen["Average Wait (min)"],
-                name="Avg Wait (min)",
+                y=df_scen["Avg Queue Wait (min)"],
+                name="Avg Queue Wait (min)",
                 marker_color="#06B6D4"
             ))
             fig_scen.add_trace(go.Bar(
@@ -515,7 +636,7 @@ with tab_sa:
                 **PLOTLY_LAYOUT,
                 title="Waiting Times by Staffing Scenario",
                 xaxis_title="Staffing Level",
-                yaxis_title="Wait Time (minutes)",
+                yaxis_title="Queue Wait Time (minutes)",
                 barmode="group",
                 height=300
             )
@@ -545,9 +666,9 @@ with tab_sa:
             render_section("Simulation Insights & Recommendations", "INSIGHTS")
             
             # Extract results for formulas
-            w2 = df_scen.loc[df_scen["Doctors"] == 2, "Average Wait (min)"].values[0]
-            w3 = df_scen.loc[df_scen["Doctors"] == 3, "Average Wait (min)"].values[0]
-            w4 = df_scen.loc[df_scen["Doctors"] == 4, "Average Wait (min)"].values[0]
+            w2 = df_scen.loc[df_scen["Doctors"] == 2, "Avg Queue Wait (min)"].values[0]
+            w3 = df_scen.loc[df_scen["Doctors"] == 3, "Avg Queue Wait (min)"].values[0]
+            w4 = df_scen.loc[df_scen["Doctors"] == 4, "Avg Queue Wait (min)"].values[0]
             
             u2 = df_scen.loc[df_scen["Doctors"] == 2, "Utilization (%)"].values[0]
             u3 = df_scen.loc[df_scen["Doctors"] == 3, "Utilization (%)"].values[0]
@@ -569,7 +690,7 @@ with tab_sa:
   </div>
   <div style="margin-bottom: 0.8rem;">
     <b style="color:white; font-size:0.9rem;">Utilization & Burnout Risk</b><br>
-    • At 2 doctors, physician utilization is <b>{u2:.1f}%</b>, which exceeds safe operational thresholds (>85%) and indicates a high risk of staff burnout.<br>
+    • At 2 doctors, physician utilization is <b>{u2:.1f}%</b>, which exceeds safe operational thresholds (>90%) and indicates a high risk of staff burnout.<br>
     • At 3 doctors, utilization is stabilized at <b>{u3:.1f}%</b>, balancing service speed and physician load.<br>
     • At 4 doctors, utilization drops to <b>{u4:.1f}%</b>, indicating potential over-staffing.
   </div>
@@ -611,7 +732,7 @@ with tab_sa:
                     x=scens,
                     y=[r["avg_wait"]
                        for r in res_a],
-                    name="Avg Wait (min)",
+                    name="Avg Queue Wait (min)",
                     marker_color="#2E86C1",
                     marker_line_width=0,
                 ))
@@ -629,7 +750,7 @@ with tab_sa:
                 fig_a.update_layout(
                     **PLOTLY_LAYOUT,
                     title="Exp A — Doctor Count",
-                    yaxis_title="Avg Wait (min)",
+                    yaxis_title="Avg Queue Wait (min)",
                     yaxis2=dict(
                         title="Utilization %",
                         overlaying="y",
@@ -648,7 +769,7 @@ with tab_sa:
                     pd.DataFrame([{
                         "Scenario":
                             r["scenario"],
-                        "Avg Wait":
+                        "Avg Queue Wait":
                             f"{r['avg_wait']} min",
                         "Max Wait":
                             f"{r['max_wait']} min",
@@ -708,7 +829,7 @@ with tab_sa:
                     **PLOTLY_LAYOUT,
                     title="Exp B — Arrival Rate",
                     xaxis_title="λ (pts/hr)",
-                    yaxis_title="Avg Wait (min)",
+                    yaxis_title="Avg Queue Wait (min)",
                     height=300,
                 )
                 st.plotly_chart(
@@ -718,7 +839,7 @@ with tab_sa:
                     pd.DataFrame([{
                         "Scenario":
                             r["scenario"],
-                        "Avg Wait":
+                        "Avg Queue Wait":
                             f"{r['avg_wait']} min",
                         "Red Wait":
                             f"{r['per_priority'][1]['avg_wait']:.1f} min",

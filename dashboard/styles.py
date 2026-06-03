@@ -2,7 +2,7 @@ import streamlit as st
 
 MEDICAL_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined' !important;
@@ -42,11 +42,7 @@ MEDICAL_CSS = """
   color: rgba(255,255,255,0.75) !important;
 }
 [data-testid="stSidebar"] .stSlider [data-testid="stThumbValue"] {
-  background: #8ed5ff !important;
-  color: #00354a !important;
-  border-radius: 4px !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 0.75rem !important;
+  display: none !important;
 }
 
 /* Titles and Headers */
@@ -73,7 +69,7 @@ header[data-testid="stHeader"] {
   background: #252b2e !important;
   color: #dee3e8 !important;
   border: 1px solid #3e484f !important;
-  border-radius: 8px !important;
+  border-radius: 10px !important;
   padding: 0.65rem 1.75rem !important;
   font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
@@ -86,6 +82,48 @@ header[data-testid="stHeader"] {
   background: #303539 !important;
   border-color: #8ed5ff !important;
   color: #8ed5ff !important;
+  box-shadow: none !important;
+}
+
+/* Sidebar — Run Simulation (primary button) */
+[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0.72rem 1.5rem !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.2) !important;
+  transition: all 0.2s ease !important;
+  width: 100% !important;
+}
+[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"]:hover {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.35) !important;
+  transform: translateY(-1px) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+/* Sidebar — Reset All (secondary button) */
+[data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"] {
+  background: transparent !important;
+  color: #bdc8d1 !important;
+  border: none !important;
+  font-size: 0.76rem !important;
+  font-weight: 500 !important;
+  padding: 0.3rem 0.8rem !important;
+  opacity: 0.65 !important;
+  box-shadow: none !important;
+}
+[data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"]:hover {
+  color: #8ed5ff !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  border: none !important;
   box-shadow: none !important;
 }
 
@@ -167,25 +205,72 @@ def inject_css():
     st.markdown(MEDICAL_CSS, unsafe_allow_html=True)
 
 
-def render_header():
-    st.markdown("""
-<div style="border-bottom:1px solid #3e484f;padding-bottom:1.25rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
-  <div>
-    <h1 style="font-family:'Inter',sans-serif;font-size:1.75rem;font-weight:700;color:#dee3e8;margin:0 0 0.25rem 0;line-height:1.2;letter-spacing:-0.02em;">
-      Emergency Room Throughput Analysis
+def render_header(params: dict | None = None):
+    lam = params.get("lambda", 20) if params else 20
+    docs = params.get("n_doctors", 3) if params else 3
+    nurs = params.get("n_nurses", 1) if params else 1
+    dur = params.get("duration", 480) if params else 480
+
+    tag_style = (
+        "background:#303539;border:1px solid #3e484f;"
+        "font-size:0.66rem;font-weight:700;"
+        "letter-spacing:0.04em;text-transform:uppercase;"
+        "padding:0.22rem 0.6rem;border-radius:20px;"
+        "font-family:'JetBrains Mono',monospace;white-space:nowrap;"
+    )
+
+    cfg_item = (
+        '<div style="text-align:center;min-width:64px;">'
+        '  <div style="font-size:0.75rem;margin-bottom:2px;opacity:0.7;">{icon}</div>'
+        '  <div style="font-family:\'JetBrains Mono\',monospace;font-size:1.15rem;'
+        '    font-weight:700;color:#ffffff;line-height:1.15;">{val}</div>'
+        '  <div style="font-size:0.62rem;color:#bdc8d1;opacity:0.7;'
+        '    margin-top:1px;font-weight:500;">{label}</div>'
+        '</div>'
+    )
+
+    st.markdown(f"""
+<div style="display:flex;justify-content:space-between;align-items:flex-start;
+  flex-wrap:wrap;gap:1rem;padding-bottom:1rem;margin-bottom:1.25rem;
+  border-bottom:1px solid #3e484f;">
+
+  <!-- Left: title + tags -->
+  <div style="flex:1;min-width:280px;">
+    <h1 style="font-family:'Inter',sans-serif;font-size:1.65rem;font-weight:700;
+      color:#dee3e8;margin:0 0 0.2rem;line-height:1.15;letter-spacing:-0.02em;">
+      IGD Queue Optimization
     </h1>
-    <p style="color:#bdc8d1;font-size:0.85rem;margin:0;font-weight:400;font-family:'Inter',sans-serif;">
-      Discrete Event Simulation (DES) — Performance Monitoring for Optimized Patient Flow
+    <p style="color:#bdc8d1;font-size:0.82rem;margin:0 0 0.7rem;font-weight:400;
+      font-family:'Inter',sans-serif;line-height:1.35;">
+      Emergency Room Discrete Event Simulation — Triage-Based Patient Flow Analysis
     </p>
+    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">
+      <span style="{tag_style}color:#8ed5ff;">SimPy DES</span>
+      <span style="{tag_style}color:#c4b5fd;">M/M/1 → M/M/S → M/M/C</span>
+      <span style="{tag_style}color:#ffc176;">Monte Carlo N=100</span>
+      <span style="{tag_style}color:#4ade80;">Kemenkes Standard</span>
+    </div>
   </div>
-  <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
-    <span style="background:#303539;border:1px solid #3e484f;color:#8ed5ff;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:0.25rem 0.65rem;border-radius:20px;font-family:'JetBrains Mono',monospace;">
-      SimPy DES Engine
-    </span>
-    <span style="background:#303539;border:1px solid #3e484f;color:#ffc176;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:0.25rem 0.65rem;border-radius:20px;font-family:'JetBrains Mono',monospace;">
-      Monte Carlo N=100
-    </span>
+
+  <!-- Right: live config card -->
+  <div style="background:#1b2024;border:1px solid #3e484f;border-radius:10px;
+    padding:0.6rem 0.9rem 0.7rem;min-width:300px;flex-shrink:0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;
+      margin-bottom:0.45rem;">
+      <span style="font-family:'Inter',sans-serif;font-size:0.62rem;font-weight:700;
+        letter-spacing:0.09em;color:#bdc8d1;text-transform:uppercase;">
+        Current Configuration</span>
+      <span class="material-symbols-outlined"
+        style="font-size:0.95rem;color:#bdc8d1;opacity:0.5;">dashboard</span>
+    </div>
+    <div style="display:flex;justify-content:space-around;gap:0.4rem;">
+      {cfg_item.format(icon='λ', val=lam, label='pts/hr')}
+      {cfg_item.format(icon='👨‍⚕️', val=docs, label='Doctors')}
+      {cfg_item.format(icon='👩‍⚕️', val=nurs, label='Nurses')}
+      {cfg_item.format(icon='⏱️', val=dur, label='min')}
+    </div>
   </div>
+
 </div>""", unsafe_allow_html=True)
 
 
@@ -286,7 +371,7 @@ def render_risk_card(label: str, probability: float, description: str):
         status = "High Risk"
         
     card_html = f"""
-    <div style="background:{bg}; border: 1px solid {border}; border-top: 4px solid {color}; border-radius: 8px; padding: 1.2rem; min-height: 140px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 12px;">
+    <div style="background:{bg}; border: 1px solid {border}; border-top: 4px solid {color}; border-radius: 10px; padding: 1.2rem; min-height: 140px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 12px;">
       <div style="font-size: 0.72rem; color: #bdc8d1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">{label}</div>
       <div style="font-size: 2.2rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 0.2rem;">{probability:.1f}%</div>
       <div style="font-size: 0.78rem; font-weight: 600; color: {color}; margin-bottom: 0.5rem;">{status}</div>

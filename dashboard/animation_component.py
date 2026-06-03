@@ -296,7 +296,7 @@ body{font-family:'Inter',sans-serif;background:#0f1418;color:#dee3e8;padding:14p
     <div class="stat-row"><span class="label">Throughput (pts/hr)</span><span class="value green" id="sp-tput">0</span></div>
     <div class="stat-row"><span class="label">Avg Time in System (min)</span><span class="value tertiary" id="sp-avgtime">—</span></div>
     <div class="stat-row"><span class="label">P(Wait > 30 min)</span><span class="value error" id="sp-pwait">0%</span></div>
-    <div class="eff-box"><span class="lbl">System Efficiency</span><span class="val" id="sp-eff">0%</span></div>
+    <div class="eff-box"><span class="lbl">Completion Rate</span><span class="val" id="sp-eff">0%</span></div>
   </div>
 </div>
 
